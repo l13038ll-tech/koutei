@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工程表自動生成デモ</title>
+<style>
+  body { font-family: sans-serif; margin: 10px; padding: 0; background: #f4f4f4; }
+  .no-print { display: block; }
+  .print-only { display: none; }
+  .card { background: #fff; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  input, select, button { padding: 8px; margin: 5px 0; box-sizing: border-box; font-size: 14px; }
+  button { background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
+  button.secondary { background: #666; }
+  button.success { background: #28a745; }
+  button.add-btn { background: #28a745; width: auto; padding: 6px 15px; font-size: 14px; }
+  button.auto-btn { background: #17a2b8; width: auto; padding: 6px 15px; font-size: 14px; margin-left: 10px; }
+  
+  .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* 入力行・ヘッダーのレイアウト */
+  .task-header { display: flex; gap: 5px; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; align-items: center; text-align: center; }
+  .task-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #ccc; align-items: center; }
+  .task-row input, .task-row select { margin: 0; }
+  
+  .col-cat { flex: 1.2; min-width: 110px; }
+  .col-name { flex: 2; min-width: 140px; }
+  .col-type { flex: 0.8; min-width: 80px; }
+  .col-start { flex: 1; min-width: 100px; }
+  .col-end { flex: 1; min-width: 100px; }
+  .col-range { flex: 2; min-width: 200px; }
+  .date-range-btn {
+    width: 100%; background: #fff; border: 1px solid #999; color: #333;
+    text-align: left; font-size: 14px; padding: 8px; border-radius: 4px; margin: 0;
+  }
+
+  /* 日程選択モーダル（ホテル予約のような開始日→終了日→完了スタイル） */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 12px;
+  }
+  .modal-box {
+    background: #fff; border-radius: 10px; width: 100%; max-width: 360px;
+    padding: 14px; max-height: 90vh; overflow-y: auto;
+  }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .modal-header button { width: 36px; height: 36px; font-size: 18px; padding: 0; margin: 0; }
+  #calMonthLabel { font-weight: bold; font-size: 16px; }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; color: #777; margin-bottom: 4px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-day {
+    aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; border-radius: 6px; cursor: pointer; background: #f4f4f4;
+  }
+  .cal-day.empty { visibility: hidden; cursor: default; }
+  .cal-day.holiday-color { color: #c0392b; }
+  .cal-day.selected { background: #0066cc; color: #fff; font-weight: bold; }
+  .cal-day.in-range { background: #cfe3ff; }
+  .cal-selection-text { font-size: 13px; color: #333; margin: 10px 0 8px; min-height: 18px; text-align: center; }
+  .modal-footer { display: flex; gap: 8px; }
+  .modal-footer button { margin: 0; }
+  .col-days { flex: 0.6; min-width: 70px; }
+  .task-days[readonly] { background: #eee; color: #333; text-align: center; }
+  .col-check { flex: 0.8; min-width: 80px; text-align: center; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+  .col-reorder { display: flex; flex-direction: column; gap: 2px; }
+  .reorder-btn { width: 28px; height: 24px; padding: 0; margin: 0; font-size: 12px; line-height: 1; background: #666; }
+  .reorder-btn:disabled { background: #ccc; cursor: default; }
+  .mobile-label { display: none; }
+  .task-end-preview { flex-basis: 100%; font-size: 12px; color: #0066cc; margin-top: 2px; }
+  .start-weekday { font-size: 13px; color: #0066cc; margin-left: 6px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  th, td { border: 1px solid #333; text-align: center; height: 35px; }
+  th { background-color: #f9f9f9; padding: 2px; }
+  td.bar-cell { padding: 0; vertical-align: bottom; position: relative; }
+  
+  .task-text { font-size: 10px; text-align: center; white-space: nowrap; position: absolute; top: 2px; left: 0; z-index: 10; pointer-events: none; }
+  .solid-line { border-bottom: 2px solid #444; width: 100%; position: absolute; bottom: 7px; left: 0; }
+  .dot-marker { width: 8px; height: 8px; background-color: #444; border-radius: 50%; position: absolute; bottom: 4px; left: 0; z-index: 11; }
+  .dashed-line { border-bottom: 2px dashed #444; width: 100%; position: absolute; bottom: 7px; left: 0; }
+  .arrow-head { width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid #444; position: absolute; bottom: 3px; right: 0; z-index: 10; }
+
+  .holiday { background-color: #e0e0e0 !important; }
+  .remarks { text-align: left; font-size: 11px; padding-top: 5px; }
+
+  /* 画面プレビュー：A4の縦横比を維持したまま画面幅にフィットさせ、ピンチズーム可能にする */
+  .preview-outer {
+    margin-top: 12px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #ccc;
+    background: #ddd;
+    padding: 10px 0;
+    touch-action: pinch-zoom pan-x pan-y; /* このエリア内でのピンチズームを明示的に許可 */
+  }
+  .preview-hint { font-size: 11px; color: #666; text-align: center; margin: 4px 0 0; }
+  .preview-scale-wrap { transform-origin: top left; }
+  .a4-sheet {
+    width: 1122px; /* A4横向き(297mm)相当の設計幅。縦横比は1122:793(≒297:210)を維持 */
+    background: #fff;
+    padding: 18px;
+    box-sizing: border-box;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.3);
+    margin: 0 auto;
+  }
+  .a4-sheet table { table-layout: fixed; }
+
+  .file-list-row { cursor: pointer; }
+  .file-list-row:active, .file-list-row:hover { background: #eef5ff; }
+  .file-list-row td { border: 1px solid #ccc; padding: 6px; }
+
+  @media print {
+    .preview-outer { display: none !important; }
+  }
+
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    body { background: #fff; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none; }
+    .print-only { display: block; }
+    table { height: 145mm; }
+  }
+
+  /* スマホ画面対応 */
+  * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+
+  @media screen and (max-width: 600px) {
+    body { margin: 6px; }
+    .grid-2col { grid-template-columns: 1fr; gap: 4px; }
+
+    .task-header { display: none; } /* 狭い画面では見出し行を隠し、代わりに各入力にラベルを付ける */
+
+    .task-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      background: #fafafa;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+    .task-row .col-cat,
+    .task-row .col-name,
+    .task-row .col-type,
+    .task-row .col-range,
+    .task-row .col-days {
+      width: 100%;
+      min-width: 0;
+      flex: none;
+    }
+    .task-row .col-check {
+      flex: none;
+      justify-content: flex-start;
+      gap: 6px;
+    }
+    .task-row .col-check::before { content: "休日を飛ばさない: "; }
+    .task-row .col-reorder {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 8px;
+    }
+    .task-row .col-reorder::before { content: "並び替え: "; font-size: 11px; color: #777; align-self: center; }
+
+    .mobile-label { display: block !important; font-size: 11px; color: #777; margin-bottom: -3px; }
+
+    .card { padding: 10px; }
+    input, select, button { font-size: 16px; } /* iOSでの自動ズームを防止 */
+    button.add-btn, button.auto-btn { width: 100%; margin-left: 0; }
+
+    div[style*="display: flex"][style*="align-items: center"] {
+      flex-wrap: wrap;
+    }
+  }
+</style>
+</head>
+<body onload="initApp()">
+
+<datalist id="categoryList">
+  <option value="仮設工事"><option value="土工事"><option value="鉄筋工事">
+  <option value="型枠工事"><option value="コンクリート工事"><option value="内装工事">
+  <option value="外壁工事"><option value="屋根工事"><option value="板金工事">
+</datalist>
+<datalist id="histDestination"></datalist>
+<datalist id="histProjectName"></datalist>
+<datalist id="histCreator"></datalist>
+<datalist id="histCompanyName"></datalist>
+<datalist id="histSupervisor"></datalist>
+<datalist id="histTaskName"></datalist>
+
+<div class="no-print">
+  <h2>工程表アプリ デモ版</h2>
+
+  <div id="screenStart" class="card" style="text-align:center;">
+    <p style="margin-top:0;">まず、どちらか選んでください。</p>
+    <button onclick="showScreen('edit')">＋ 新規作成</button>
+    <button onclick="showScreen('load')" class="secondary">📂 保存済みデータを読み込む</button>
+  </div>
+
+  <div id="screenLoad" style="display:none;">
+    <div class="card" style="background: #e9ecef;">
+      <h3>📂 宛先フォルダ切替・データ読込</h3>
+      <label>宛先フォルダ:</label>
+      <select id="folderSelect" onchange="onFolderSelected()"><option value="">-- 保存データなし --</option></select>
+
+      <div id="fileListArea" style="display:none; margin-top:12px;">
+        <label>工事担当者で絞り込み:</label>
+        <input type="text" id="supervisorFilter" oninput="renderFileList()" placeholder="担当者名の一部を入力">
+
+        <div style="overflow-x:auto; margin-top:8px;">
+          <table id="fileListTable" style="width:100%; border-collapse:collapse; font-size:13px; background:#fff;">
+            <thead>
+              <tr>
+                <th class="sort-th" onclick="sortFileList('proj')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">工事名<span id="sortIcon-proj"></span></th>
+                <th class="sort-th" onclick="sortFileList('supervisor')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">担当者<span id="sortIcon-supervisor"></span></th>
+                <th class="sort-th" onclick="sortFileList('cDate')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">作成日<span id="sortIcon-cDate"></span></th>
+                <th class="sort-th" onclick="sortFileList('mDate')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">修正日<span id="sortIcon-mDate"></span></th>
+              </tr>
+            </thead>
+            <tbody id="fileListBody"></tbody>
+          </table>
+        </div>
+        <p id="fileListEmpty" style="font-size:12px; color:#777; display:none;">該当するデータがありません。</p>
+      </div>
+
+      <button onclick="showScreen('start')" class="secondary" style="width: auto; padding: 6px 15px; background:#999; margin-top:12px;">← 戻る</button>
+    </div>
+  </div>
+
+  <div id="screenEdit" style="display:none;">
+  <p><a href="#" onclick="showScreen('start'); return false;" style="font-size:12px; color:#666;">← 最初の画面に戻る</a></p>
+  <div class="card">
+    <h3>基本情報</h3>
+    <div class="grid-2col">
+      <div><label>宛先:</label><input type="text" id="destination" list="histDestination" placeholder="記入例：〇〇建設株式会社（殿は自動で付きます）" onchange="saveHistory('Destination', this.value)"></div>
+      <div><label>工事名:</label><input type="text" id="projectName" list="histProjectName" placeholder="記入例：△△邸 新築工事" onchange="saveHistory('ProjectName', this.value)"></div>
+    </div>
+    
+    <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px; flex-wrap: wrap;">
+      <label>工事開始日:</label><input type="date" id="tableStartDate" oninput="markConstructionStartManual()"><span id="constructionStartWeekday" class="start-weekday"></span>
+      <button class="auto-btn" onclick="resetConstructionStartAuto()">最古の開始日を自動反映</button>
+      <label>表示日数（空欄で自動）:</label><input type="number" id="displayDays" placeholder="自動" style="width: 80px;">
+      <button class="auto-btn" onclick="resetDisplayDaysAuto()">自動計算に戻す</button>
+    </div>
+    <p style="font-size: 11px; color: #777; margin: 4px 0 0;">工事開始日は各工程のうち最も古い開始日を自動反映します（直接カレンダーで選ぶと手動設定に切り替わります）。表は工事開始日の3日前〜工事終了日の3日後を自動表示します（表示日数を入力すると手動で上書き可能）。</p>
+
+    <div class="grid-2col" style="margin-top: 10px;">
+      <div><label>作成日:</label><input type="date" id="createDate"></div>
+      <div><label>修正日:</label><input type="date" id="modifyDate"></div>
+      <div><label>作成者:</label><input type="text" id="creator" list="histCreator" placeholder="記入例：山田 太郎" onchange="saveHistory('Creator', this.value)"></div>
+      <div><label>施行:</label><input type="text" id="companyName" list="histCompanyName" placeholder="記入例：□□工業株式会社" onchange="saveHistory('CompanyName', this.value)"></div>
+      <div><label>工事担当者:</label><input type="text" id="supervisor" list="histSupervisor" placeholder="記入例：鈴木 一郎" onchange="saveHistory('Supervisor', this.value)"></div>
+    </div>
+    <p style="font-size: 11px; color: #777; margin: 4px 0 0;">※工事担当者は工程表には印字されません。読込画面の一覧で絞り込む際に使用します。</p>
+    <div style="margin-top:10px;">
+      <label>休日として飛ばす日（チェックした日をスキップ）:</label><br>
+      <label><input type="checkbox" id="skipSat" checked> 土曜</label>
+      <label><input type="checkbox" id="skipSun" checked> 日曜</label>
+      <label><input type="checkbox" id="skipHol" checked> 祝日</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>工程入力</h3>
+    <!-- 入力欄上部の説明 -->
+    <div class="task-header">
+      <div class="col-cat">工種</div>
+      <div class="col-name">工事内容</div>
+      <div class="col-type">表示形式</div>
+      <div class="col-range">日程</div>
+      <div class="col-days">実働日数<br>(自動)</div>
+      <div class="col-check">休日を飛ばさない</div>
+      <div class="col-reorder" style="font-weight:bold;">並替</div>
+    </div>
+    
+    <div id="taskList">
+      <div class="task-row">
+        <span class="mobile-label">工種</span>
+        <input type="text" list="categoryList" class="task-cat col-cat" placeholder="例：土工事">
+        <span class="mobile-label">工事内容</span>
+        <input type="text" list="histTaskName" class="task-name col-name" placeholder="例：基礎工事" onchange="saveHistory('TaskName', this.value)">
+        <span class="mobile-label">表示形式</span>
+        <select class="task-type col-type"><option value="bar">実施（●→）</option><option value="arrow">養生等（点線）</option></select>
+        <span class="mobile-label">日程</span>
+        <button type="button" class="date-range-btn col-range" onclick="openDateRangeModal(this)">開始日・終了日を選択</button>
+        <input type="hidden" class="task-start">
+        <input type="hidden" class="task-end">
+        <span class="mobile-label">実働日数(自動)</span>
+        <input type="number" class="task-days col-days" placeholder="自動計算" readonly>
+        <label class="col-check"><input type="checkbox" class="task-noskip" onchange="updateTaskRange(this)"></label>
+        <div class="col-reorder">
+          <button type="button" class="reorder-btn" onclick="moveTaskRow(this, 'up')">▲</button>
+          <button type="button" class="reorder-btn" onclick="moveTaskRow(this, 'down')">▼</button>
+        </div>
+        <div class="task-end-preview"></div>
+      </div>
+    </div>
+    <p style="font-size: 11px; color: #777; margin: 4px 0 0;">工程は「＋ 工程を追加」で必要な数だけ増やせます。</p>
+    <button class="add-btn" onclick="addTaskRow()">＋ 工程を追加</button>
+  </div>
+
+  <div class="card">
+    <button onclick="generateGantt()">工程表を作成</button>
+    <button onclick="saveData()" class="success">現在の内容を保存（宛先フォルダへ格納）</button>
+    <button onclick="window.print()" class="secondary">PDF出力・印刷</button>
+  </div>
+
+  <div id="previewOuter" class="preview-outer" style="display:none;">
+    <div id="previewScaleWrap" class="preview-scale-wrap">
+      <div id="previewSheet" class="a4-sheet"></div>
+    </div>
+  </div>
+  <p id="previewHint" class="preview-hint" style="display:none;">2本指でピンチすると拡大・縮小できます</p>
+  </div>
+</div>
+
+<div id="dateRangeModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <button type="button" class="secondary" onclick="calNavigate(-1)">‹</button>
+      <div id="calMonthLabel"></div>
+      <button type="button" class="secondary" onclick="calNavigate(1)">›</button>
+    </div>
+    <div class="cal-weekdays">
+      <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+    </div>
+    <div id="calGrid" class="cal-grid"></div>
+    <div id="calSelectionText" class="cal-selection-text"></div>
+    <div class="modal-footer">
+      <button type="button" class="secondary" style="flex:1;" onclick="closeDateRangeModal()">キャンセル</button>
+      <button type="button" id="calDoneBtn" class="success" style="flex:1;" onclick="confirmDateRange()" disabled>完了</button>
+    </div>
+  </div>
+</div>
+
+<div id="ganttArea" class="print-only"></div>
+
+<script>
+const publicHolidays = ['2026-08-11', '2026-09-21', '2026-09-22', '2026-09-23'];
+
+function initApp() {
+  document.getElementById('createDate').value = getTodayStr(); // 新規作成時は作成日を自動反映
+  updateFolderSelect();
+  ['Destination', 'ProjectName', 'Creator', 'CompanyName', 'Supervisor', 'TaskName'].forEach(renderHistoryDatalist);
+  updateConstructionStartWeekday();
+  showScreen('start');
+}
+
+/* ===== 画面切り替え（初期画面／読込画面／作成・編集画面） ===== */
+function showScreen(name) {
+  document.getElementById('screenStart').style.display = (name === 'start') ? 'block' : 'none';
+  document.getElementById('screenLoad').style.display = (name === 'load') ? 'block' : 'none';
+  document.getElementById('screenEdit').style.display = (name === 'edit') ? 'block' : 'none';
+  if (name === 'load') updateFolderSelect(); // 読込画面を開くたびに最新の保存データ一覧を反映
+  window.scrollTo(0, 0);
+}
+
+/* ===== 直近入力履歴（各項目ごとに最大3件、端末内のみで保持） ===== */
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+function loadHistory(key) {
+  try {
+    return JSON.parse(localStorage.getItem('inputHistory_' + key)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHistory(key, value) {
+  value = (value || '').trim();
+  if (!value) return;
+  let arr = loadHistory(key);
+  arr = arr.filter(v => v !== value); // 既存の同じ値は先頭に上げ直す
+  arr.unshift(value);
+  arr = arr.slice(0, 3); // 直近3件のみ保持
+  localStorage.setItem('inputHistory_' + key, JSON.stringify(arr));
+  renderHistoryDatalist(key);
+}
+
+function renderHistoryDatalist(key) {
+  const dl = document.getElementById('hist' + key);
+  if (!dl) return;
+  const arr = loadHistory(key);
+  dl.innerHTML = arr.map(v => `<option value="${escapeHtml(v)}"></option>`).join('');
+}
+
+function isHoliday(dateObj) {
+  const yyyy = dateObj.getFullYear();
+  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const dd = String(dateObj.getDate()).padStart(2, '0');
+  return publicHolidays.includes(`${yyyy}-${mm}-${dd}`);
+}
+
+function getTodayStr() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// 工程表出力時、宛先の末尾に敬称が無ければ「殿」を自動で付ける（既に「殿」「御中」「様」があれば付けない）
+function formatDestinationForPrint(dest) {
+  const trimmed = (dest || '').trim();
+  if (!trimmed) return '';
+  if (/(殿|御中|様)$/.test(trimmed)) return trimmed;
+  return trimmed + ' 殿';
+}
+
+function shouldSkip(dateObj) {
+  const day = dateObj.getDay();
+  if (day === 6 && document.getElementById('skipSat').checked) return true;
+  if (day === 0 && document.getElementById('skipSun').checked) return true;
+  if (isHoliday(dateObj) && document.getElementById('skipHol').checked) return true;
+  return false;
+}
+
+function isColorDay(dateObj) {
+  const day = dateObj.getDay();
+  return (day === 0 || day === 6 || isHoliday(dateObj));
+}
+
+/* ===== 日程をより直感的に把握するための補助表示 ===== */
+function formatDateWithWeekday(dateObj) {
+  if (!dateObj) return '';
+  const w = ['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()];
+  return `${dateObj.getMonth() + 1}/${dateObj.getDate()}(${w})`;
+}
+
+// 開始日・実働日数・休日を飛ばさないの設定から、実際の終了日を計算する（旧データ互換用）
+function computeTaskEndDate(startStr, days, noSkip) {
+  if (!startStr || isNaN(days) || days <= 0) return null;
+  let tempEnd = new Date(startStr);
+  let counted = 0;
+  while (counted < days) {
+    if (noSkip || !shouldSkip(tempEnd)) counted++;
+    if (counted < days) tempEnd.setDate(tempEnd.getDate() + 1);
+  }
+  return tempEnd;
+}
+
+// 開始日〜終了日（カレンダーで選択）の範囲から、実働日数（休日を除いた日数）を計算する
+function computeWorkingDaysBetween(startStr, endStr, noSkip) {
+  if (!startStr || !endStr) return null;
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+  if (end < start) return null;
+  let count = 0;
+  let d = new Date(start);
+  while (d <= end) {
+    if (noSkip || !shouldSkip(d)) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
+// 開始日／終了日／休日設定が変わるたびに、実働日数をその場で自動計算して表示する
+function updateTaskRange(el) {
+  const row = el.closest('.task-row');
+  if (!row) return;
+  const startInput = row.querySelector('.task-start');
+  const endInput = row.querySelector('.task-end');
+  const daysInput = row.querySelector('.task-days');
+  const noSkipInput = row.querySelector('.task-noskip');
+  const previewEl = row.querySelector('.task-end-preview');
+
+  const startStr = startInput.value;
+  const endStr = endInput.value;
+  const noSkip = noSkipInput.checked;
+
+  if (startStr && endStr && new Date(endStr) < new Date(startStr)) {
+    daysInput.value = '';
+    if (previewEl) { previewEl.style.color = '#c00'; previewEl.textContent = '終了日は開始日以降を選んでください'; }
+    return;
+  }
+
+  const workDays = computeWorkingDaysBetween(startStr, endStr, noSkip);
+  daysInput.value = (workDays !== null) ? workDays : '';
+
+  if (!previewEl) return;
+  if (workDays === null) {
+    previewEl.style.color = '#777';
+    previewEl.textContent = startStr ? `${formatDateWithWeekday(new Date(startStr))} 開始（終了日を選ぶと実働日数を自動計算）` : '';
+    return;
+  }
+  previewEl.style.color = '#0066cc';
+  previewEl.textContent = `${formatDateWithWeekday(new Date(startStr))} 〜 ${formatDateWithWeekday(new Date(endStr))}　実働${workDays}日`;
+}
+
+// 工事開始日の入力欄に、選んだ日の曜日をその場で表示する
+function updateConstructionStartWeekday() {
+  const input = document.getElementById('tableStartDate');
+  const span = document.getElementById('constructionStartWeekday');
+  if (!input || !span) return;
+  span.textContent = input.value ? formatDateWithWeekday(new Date(input.value)) : '';
+}
+
+// 工程行に入力されている中で、最も古い開始日を取得する
+function getEarliestTaskStartDate() {
+  const starts = document.querySelectorAll('.task-start');
+  let minDate = null;
+  starts.forEach(input => {
+    if (!input.value) return;
+    const d = new Date(input.value);
+    if (!minDate || d < minDate) minDate = d;
+  });
+  return minDate;
+}
+
+// 工事開始日を直接カレンダーで編集したら、以後は自動反映しない（手動設定）
+function markConstructionStartManual() {
+  const input = document.getElementById('tableStartDate');
+  if (input) input.dataset.manual = 'true';
+  updateConstructionStartWeekday();
+}
+
+// 工程の開始日が変わるたびに呼び出す。手動設定中でなければ最古の開始日を自動反映する
+function syncConstructionStartDate() {
+  const input = document.getElementById('tableStartDate');
+  if (!input || input.dataset.manual === 'true') return;
+  const earliest = getEarliestTaskStartDate();
+  if (earliest) {
+    input.value = dateKey(earliest);
+    updateConstructionStartWeekday();
+  }
+}
+
+// 「最古の開始日を自動反映」ボタン：手動設定を解除し、自動反映に戻す
+function resetConstructionStartAuto() {
+  const input = document.getElementById('tableStartDate');
+  if (input) input.dataset.manual = 'false';
+  syncConstructionStartDate();
+}
+
+/* ===== 日程選択モーダル（開始日→終了日→完了のホテル予約スタイル） ===== */
+let calState = { row: null, year: 0, month: 0, start: null, end: null };
+
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function openDateRangeModal(btn) {
+  const row = btn.closest('.task-row');
+  if (!row) return;
+  const startVal = row.querySelector('.task-start').value;
+  const endVal = row.querySelector('.task-end').value;
+
+  calState.row = row;
+  calState.start = startVal ? new Date(startVal) : null;
+  calState.end = endVal ? new Date(endVal) : null;
+
+  const base = calState.start || new Date();
+  calState.year = base.getFullYear();
+  calState.month = base.getMonth();
+
+  renderCalendar();
+  document.getElementById('dateRangeModal').style.display = 'flex';
+}
+
+function closeDateRangeModal() {
+  document.getElementById('dateRangeModal').style.display = 'none';
+  calState.row = null;
+}
+
+function calNavigate(delta) {
+  calState.month += delta;
+  if (calState.month < 0) { calState.month = 11; calState.year--; }
+  if (calState.month > 11) { calState.month = 0; calState.year++; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('calMonthLabel').textContent = `${calState.year}年${calState.month + 1}月`;
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  const firstDay = new Date(calState.year, calState.month, 1);
+  const startOffset = firstDay.getDay();
+  const daysInMonth = new Date(calState.year, calState.month + 1, 0).getDate();
+
+  for (let i = 0; i < startOffset; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateObj = new Date(calState.year, calState.month, d);
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = d;
+    if (isColorDay(dateObj)) cell.classList.add('holiday-color');
+    if (calState.start && dateKey(dateObj) === dateKey(calState.start)) cell.classList.add('selected');
+    if (calState.end && dateKey(dateObj) === dateKey(calState.end)) cell.classList.add('selected');
+    if (calState.start && calState.end && dateObj > calState.start && dateObj < calState.end) cell.classList.add('in-range');
+    cell.onclick = () => selectCalDay(dateObj);
+    grid.appendChild(cell);
+  }
+
+  const selText = document.getElementById('calSelectionText');
+  if (calState.start && calState.end) {
+    selText.textContent = `${formatDateWithWeekday(calState.start)} 〜 ${formatDateWithWeekday(calState.end)}`;
+  } else if (calState.start) {
+    selText.textContent = `${formatDateWithWeekday(calState.start)} 〜 （終了日をタップ）`;
+  } else {
+    selText.textContent = 'まず開始日をタップしてください';
+  }
+
+  document.getElementById('calDoneBtn').disabled = !calState.start;
+}
+
+function selectCalDay(dateObj) {
+  if (!calState.start || (calState.start && calState.end)) {
+    // 新規選択開始、またはすでに範囲確定済みなら選び直し
+    calState.start = dateObj;
+    calState.end = null;
+  } else if (dateObj < calState.start) {
+    // 開始日より前をタップしたら、そこを新しい開始日にする
+    calState.start = dateObj;
+    calState.end = null;
+  } else {
+    calState.end = dateObj;
+  }
+  renderCalendar();
+}
+
+function confirmDateRange() {
+  if (!calState.row || !calState.start) return;
+  const row = calState.row;
+  const endDate = calState.end || calState.start; // 終了日未選択なら単日の工程として扱う
+
+  const startInput = row.querySelector('.task-start');
+  const endInput = row.querySelector('.task-end');
+  startInput.value = dateKey(calState.start);
+  endInput.value = dateKey(endDate);
+
+  const displayBtn = row.querySelector('.date-range-btn');
+  if (displayBtn) {
+    displayBtn.textContent = `${formatDateWithWeekday(calState.start)} 〜 ${formatDateWithWeekday(endDate)}`;
+  }
+
+  updateTaskRange(startInput);
+  syncConstructionStartDate();
+  closeDateRangeModal();
+}
+
+/* 入力済みの全工程から、実働日数ベースでの最終日（最も遅い終了日）を求める */
+function getLatestTaskEndDate() {
+  const starts = document.querySelectorAll('.task-start');
+  const daysInputs = document.querySelectorAll('.task-days');
+  const noSkips = document.querySelectorAll('.task-noskip');
+  let maxDate = null;
+
+  for (let i = 0; i < starts.length; i++) {
+    const startStr = starts[i].value;
+    const days = parseInt(daysInputs[i].value);
+    const noSkip = noSkips[i].checked;
+    if (!startStr || isNaN(days) || days <= 0) continue;
+
+    let tempEnd = new Date(startStr);
+    let counted = 0;
+    while (counted < days) {
+      if (noSkip || !shouldSkip(tempEnd)) counted++;
+      if (counted < days) tempEnd.setDate(tempEnd.getDate() + 1);
+    }
+    if (!maxDate || tempEnd > maxDate) maxDate = tempEnd;
+  }
+  return maxDate;
+}
+
+/* 表示日数（未入力時）を自動計算：工事開始日の3日前〜工事終了日の3日後 */
+function computeAutoDisplayDays(bufferStart) {
+  const latestEnd = getLatestTaskEndDate();
+  let refEnd;
+  if (latestEnd) {
+    refEnd = new Date(latestEnd);
+    refEnd.setDate(refEnd.getDate() + 3);
+  } else {
+    // 工程が未入力の場合の最低限のフォールバック
+    refEnd = new Date(bufferStart);
+    refEnd.setDate(refEnd.getDate() + 9);
+  }
+  const diffDays = Math.round((refEnd - bufferStart) / (1000 * 60 * 60 * 24)) + 1;
+  return Math.max(diffDays, 1);
+}
+
+/* 「表示日数」を手動入力していた場合に、自動計算モードへ戻す */
+function resetDisplayDaysAuto() {
+  document.getElementById('displayDays').value = '';
+  const sheet = document.getElementById('previewSheet');
+  if (sheet && sheet.innerHTML.trim()) generateGantt();
+}
+
+// 工程行の並び順を入れ替える（＝工程表内の並びも変わる）
+function moveTaskRow(btn, direction) {
+  const row = btn.closest('.task-row');
+  if (!row) return;
+  if (direction === 'up') {
+    const prev = row.previousElementSibling;
+    if (prev) row.parentNode.insertBefore(row, prev);
+  } else {
+    const next = row.nextElementSibling;
+    if (next) row.parentNode.insertBefore(next, row);
+  }
+}
+
+function addTaskRow() {
+  const list = document.getElementById('taskList');
+  const row = document.createElement('div');
+  row.className = 'task-row';
+  row.innerHTML = `
+    <span class="mobile-label">工種</span>
+    <input type="text" list="categoryList" class="task-cat col-cat" placeholder="例：土工事">
+    <span class="mobile-label">工事内容</span>
+    <input type="text" list="histTaskName" class="task-name col-name" placeholder="例：基礎工事" onchange="saveHistory('TaskName', this.value)">
+    <span class="mobile-label">表示形式</span>
+    <select class="task-type col-type"><option value="bar">実施（●→）</option><option value="arrow">養生等（点線）</option></select>
+    <span class="mobile-label">日程</span>
+    <button type="button" class="date-range-btn col-range" onclick="openDateRangeModal(this)">開始日・終了日を選択</button>
+    <input type="hidden" class="task-start">
+    <input type="hidden" class="task-end">
+    <span class="mobile-label">実働日数(自動)</span>
+    <input type="number" class="task-days col-days" placeholder="自動計算" readonly>
+    <label class="col-check"><input type="checkbox" class="task-noskip" onchange="updateTaskRange(this)"></label>
+    <div class="col-reorder">
+      <button type="button" class="reorder-btn" onclick="moveTaskRow(this, 'up')">▲</button>
+      <button type="button" class="reorder-btn" onclick="moveTaskRow(this, 'down')">▼</button>
+    </div>
+    <div class="task-end-preview"></div>
+  `;
+  list.appendChild(row);
+}
+
+function generateGantt() {
+  const dest = document.getElementById('destination').value;
+  const pName = document.getElementById('projectName').value;
+  const cName = document.getElementById('companyName').value;
+  const cDate = document.getElementById('createDate').value;
+  const mDate = document.getElementById('modifyDate').value;
+  const creator = document.getElementById('creator').value;
+  
+  const sDateStr = document.getElementById('tableStartDate').value; // 工事開始日
+  
+  if(!sDateStr) return alert("工事開始日を入力してください");
+
+  // 表の表示開始日は、工事開始日の3日前を自動的に採用
+  let bufferStart = new Date(sDateStr);
+  bufferStart.setDate(bufferStart.getDate() - 3);
+
+  // 表示日数：未入力なら「工事終了日の3日後」までを自動計算、入力があればそれを優先
+  const displayDaysField = document.getElementById('displayDays').value;
+  const displayDays = displayDaysField ? (parseInt(displayDaysField) || 1) : computeAutoDisplayDays(bufferStart);
+  
+  let dates = [];
+  for(let i=0; i<displayDays; i++) {
+    let d = new Date(bufferStart);
+    d.setDate(d.getDate() + i);
+    dates.push(d);
+  }
+
+  const cats = document.querySelectorAll('.task-cat');
+  const names = document.querySelectorAll('.task-name');
+  const types = document.querySelectorAll('.task-type');
+  const starts = document.querySelectorAll('.task-start');
+  const daysInputs = document.querySelectorAll('.task-days');
+  const noSkips = document.querySelectorAll('.task-noskip');
+  
+  let rawTasks = [];
+  for(let i=0; i<names.length; i++) {
+    let cat = cats[i].value.trim(), name = names[i].value.trim();
+    let type = types[i].value, startStr = starts[i].value;
+    let days = parseInt(daysInputs[i].value);
+    let noSkip = noSkips[i].checked;
+    
+    if(!cat || !name || !startStr || isNaN(days)) continue;
+
+    let tempDate = new Date(startStr);
+    let activeDates = [];
+    let counted = 0;
+    while(counted < days) {
+      if (noSkip || !shouldSkip(tempDate)) {
+        activeDates.push(tempDate.getTime());
+        counted++;
+      }
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+    
+    let segments = [];
+    let currentSegment = [];
+    for(let j=0; j<activeDates.length; j++) {
+      if(currentSegment.length === 0) currentSegment.push(activeDates[j]);
+      else {
+        if(activeDates[j] - currentSegment[currentSegment.length - 1] <= 86400000 * 1.5) {
+          currentSegment.push(activeDates[j]);
+        } else {
+          segments.push(currentSegment);
+          currentSegment = [activeDates[j]];
+        }
+      }
+    }
+    if(currentSegment.length > 0) segments.push(currentSegment);
+    rawTasks.push({ cat, name, type, activeDates, segments });
+  }
+
+  let categories = [];
+  rawTasks.forEach(task => {
+    let catObj = categories.find(c => c.name === task.cat);
+    if(!catObj) { catObj = { name: task.cat, tracks: [] }; categories.push(catObj); }
+    let placed = false;
+    for(let track of catObj.tracks) {
+      let overlap = false;
+      for(let existing of track) {
+        if(task.activeDates.some(d => existing.activeDates.includes(d))) { overlap = true; break; }
+      }
+      if(!overlap) { track.push(task); placed = true; break; }
+    }
+    if(!placed) catObj.tracks.push([task]);
+  });
+
+  let rowsData = [];
+  categories.forEach(catObj => {
+    catObj.tracks.forEach((track, index) => {
+      rowsData.push({ categoryName: catObj.name, rowspan: catObj.tracks.length, isFirstRow: (index === 0), tasks: track });
+    });
+  });
+  while(rowsData.length < 10) rowsData.push({ categoryName: "", rowspan: 1, isFirstRow: true, tasks: [] });
+
+  let monthColspans = [];
+  if(dates.length > 0) {
+    let currentMonth = dates[0].getMonth() + 1, currentCount = 0;
+    for(let d of dates) {
+      if((d.getMonth() + 1) === currentMonth) currentCount++;
+      else { monthColspans.push({ month: currentMonth, span: currentCount }); currentMonth = d.getMonth() + 1; currentCount = 1; }
+    }
+    monthColspans.push({ month: currentMonth, span: currentCount });
+  }
+
+  let html = `<div style="font-size: 14px; text-align: left; margin-bottom: -15px;">${formatDestinationForPrint(dest)}</div>`;
+  html += `<div style="text-align:center; font-size: 18px; margin-bottom: 5px;"><b>${pName} 工程表</b></div>`;
+  html += `<div style="display:flex; justify-content: space-between; margin-bottom: 5px; font-size: 11px;">
+            <div style="text-align:left;">施行: ${cName}</div>
+            <div style="text-align:right;">
+              作成日: ${cDate} ${mDate ? ' / 修正日: '+mDate : ''} <br>作成者: ${creator}
+            </div>
+           </div>`;
+  
+  html += `<table><tr><th rowspan="2" style="width:120px;">工種</th>`;
+  monthColspans.forEach(m => html += `<th colspan="${m.span}">${m.month}月</th>`);
+  html += `</tr><tr>`;
+  dates.forEach(d => {
+    let dayStr = ['日','月','火','水','木','金','土'][d.getDay()];
+    let cls = isColorDay(d) ? 'class="holiday"' : '';
+    html += `<th ${cls}>${d.getDate()}<br>${dayStr}</th>`;
+  });
+  html += `</tr>`;
+
+  rowsData.forEach(row => {
+    html += `<tr>`;
+    if(row.isFirstRow) html += `<td rowspan="${row.rowspan}">${row.categoryName}</td>`;
+    dates.forEach(cellDate => {
+      let cellTime = cellDate.getTime();
+      let cls = isColorDay(cellDate) ? 'holiday' : '';
+      let activeTask = row.tasks.find(t => t.activeDates.includes(cellTime));
+      
+      if(activeTask) {
+        let activeSegment = activeTask.segments.find(seg => seg.includes(cellTime));
+        let isFirst = (cellTime === activeSegment[0]);
+        let isLast = (cellTime === activeSegment[activeSegment.length - 1]);
+        
+        let textDiv = isFirst ? `<div class="task-text" style="width: ${activeSegment.length * 100}%;">${activeTask.name}</div>` : '';
+        let shapeDiv = activeTask.type === 'arrow'
+          ? `<div class="dashed-line"></div>${isLast ? '<div class="arrow-head"></div>' : ''}`
+          : `${isFirst ? '<div class="dot-marker"></div>' : ''}<div class="solid-line"></div>${isLast ? '<div class="arrow-head"></div>' : ''}`;
+
+        html += `<td class="bar-cell ${cls}">${textDiv}${shapeDiv}</td>`;
+      } else {
+        html += `<td class="${cls}"></td>`;
+      }
+    });
+    html += `</tr>`;
+  });
+  
+  html += `</table><div class="remarks">備考: 天候等により変更となる場合があります。</div>`;
+  
+  // 印刷用（A4サイズ・@pageで制御、画面には出さない）
+  document.getElementById('ganttArea').innerHTML = html;
+
+  // 画面プレビュー用（A4の縦横比を保ったまま画面幅に合わせて縮小表示）
+  document.getElementById('previewSheet').innerHTML = html;
+  document.getElementById('previewOuter').style.display = 'block';
+  document.getElementById('previewHint').style.display = 'block';
+  scalePreview();
+}
+
+function scalePreview() {
+  const outer = document.getElementById('previewOuter');
+  const wrap = document.getElementById('previewScaleWrap');
+  const sheet = document.getElementById('previewSheet');
+  if (!sheet || !sheet.innerHTML.trim()) return;
+
+  const designWidth = 1122; // a4-sheetの設計幅と合わせる
+
+  // 実際の高さを測るため、一旦等倍に戻す
+  wrap.style.transform = 'scale(1)';
+  wrap.style.width = designWidth + 'px';
+  const naturalHeight = sheet.offsetHeight;
+
+  const availableWidth = outer.clientWidth - 4 || (window.innerWidth - 20);
+  const scale = Math.min(1, availableWidth / designWidth);
+
+  wrap.style.transform = `scale(${scale})`;
+  outer.style.height = Math.ceil(naturalHeight * scale) + 'px';
+}
+
+window.addEventListener('resize', scalePreview);
+window.addEventListener('orientationchange', scalePreview);
+
+function saveData() {
+  const dest = document.getElementById('destination').value.trim() || '未分類';
+  const proj = document.getElementById('projectName').value.trim() || '名称未設定';
+  
+  document.getElementById('modifyDate').value = getTodayStr();
+
+  let data = {
+    dest, proj, 
+    cName: document.getElementById('companyName').value,
+    supervisor: document.getElementById('supervisor').value,
+    cDate: document.getElementById('createDate').value,
+    mDate: document.getElementById('modifyDate').value,
+    creator: document.getElementById('creator').value,
+    sDate: document.getElementById('tableStartDate').value,
+    dDays: document.getElementById('displayDays').value,
+    skipSat: document.getElementById('skipSat').checked,
+    skipSun: document.getElementById('skipSun').checked,
+    skipHol: document.getElementById('skipHol').checked,
+    tasks: []
+  };
+
+  const cats = document.querySelectorAll('.task-cat');
+  const names = document.querySelectorAll('.task-name');
+  const types = document.querySelectorAll('.task-type');
+  const starts = document.querySelectorAll('.task-start');
+  const ends = document.querySelectorAll('.task-end');
+  const days = document.querySelectorAll('.task-days');
+  const noSkips = document.querySelectorAll('.task-noskip');
+  
+  for(let i=0; i<names.length; i++) {
+    data.tasks.push({
+      cat: cats[i].value, name: names[i].value, type: types[i].value,
+      start: starts[i].value, end: ends[i].value, days: days[i].value, noSkip: noSkips[i].checked
+    });
+  }
+
+  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
+  if(!db[dest]) db[dest] = {};
+  db[dest][proj] = data;
+  localStorage.setItem('ganttAppDB', JSON.stringify(db));
+  
+  alert(`${dest} フォルダに保存しました。`);
+  updateFolderSelect();
+}
+
+function updateFolderSelect() {
+  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
+  const folderSel = document.getElementById('folderSelect');
+  const prevValue = folderSel.value;
+  folderSel.innerHTML = '<option value="">-- フォルダを選択 --</option>';
+  for (let folder in db) {
+    folderSel.innerHTML += `<option value="${folder}">${folder}</option>`;
+  }
+  if (prevValue && db[prevValue]) folderSel.value = prevValue;
+  onFolderSelected();
+}
+
+let fileListState = { folder: '', sortKey: 'mDate', sortDir: 'desc' };
+
+// 宛先フォルダを選ぶと、そのフォルダ内のデータを一覧表示する
+function onFolderSelected() {
+  const folder = document.getElementById('folderSelect').value;
+  fileListState.folder = folder;
+  const area = document.getElementById('fileListArea');
+  if (!folder) { area.style.display = 'none'; return; }
+  area.style.display = 'block';
+  renderFileList();
+}
+
+// 一覧の見出しをタップして並び替え（同じ列を再タップで昇順・降順を切替）
+function sortFileList(key) {
+  if (fileListState.sortKey === key) {
+    fileListState.sortDir = (fileListState.sortDir === 'asc') ? 'desc' : 'asc';
+  } else {
+    fileListState.sortKey = key;
+    fileListState.sortDir = 'asc';
+  }
+  renderFileList();
+}
+
+function renderFileList() {
+  const folder = fileListState.folder;
+  const body = document.getElementById('fileListBody');
+  const emptyMsg = document.getElementById('fileListEmpty');
+  body.innerHTML = '';
+
+  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
+  const folderData = (folder && db[folder]) ? db[folder] : {};
+
+  // 工事担当者名での絞り込み
+  const filterText = (document.getElementById('supervisorFilter').value || '').trim().toLowerCase();
+  let items = Object.keys(folderData).map(proj => ({ proj, data: folderData[proj] }));
+  if (filterText) {
+    items = items.filter(it => (it.data.supervisor || '').toLowerCase().includes(filterText));
+  }
+
+  const key = fileListState.sortKey;
+  const dir = fileListState.sortDir === 'asc' ? 1 : -1;
+  items.sort((a, b) => {
+    const va = (key === 'proj') ? a.proj : (a.data[key] || '');
+    const vb = (key === 'proj') ? b.proj : (b.data[key] || '');
+    if (va < vb) return -1 * dir;
+    if (va > vb) return 1 * dir;
+    return 0;
+  });
+
+  ['proj', 'supervisor', 'cDate', 'mDate'].forEach(k => {
+    const icon = document.getElementById('sortIcon-' + k);
+    if (icon) icon.textContent = (fileListState.sortKey === k) ? (fileListState.sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  });
+
+  if (items.length === 0) { emptyMsg.style.display = 'block'; return; }
+  emptyMsg.style.display = 'none';
+
+  items.forEach(it => {
+    const tr = document.createElement('tr');
+    tr.className = 'file-list-row';
+    tr.onclick = () => loadSavedItem(folder, it.proj);
+    tr.innerHTML = `
+      <td>${escapeHtml(it.proj)}</td>
+      <td>${escapeHtml(it.data.supervisor || '')}</td>
+      <td>${escapeHtml(it.data.cDate || '')}</td>
+      <td>${escapeHtml(it.data.mDate || '')}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function loadSavedItem(folder, proj) {
+  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
+  if (!folder || !proj || !db[folder] || !db[folder][proj]) return alert('データが見つかりませんでした');
+
+  const data = db[folder][proj];
+  document.getElementById('destination').value = data.dest;
+  document.getElementById('projectName').value = data.proj;
+  document.getElementById('companyName').value = data.cName;
+  document.getElementById('supervisor').value = data.supervisor || '';
+  document.getElementById('createDate').value = data.cDate; // 作成日は当初の日付を維持
+  document.getElementById('modifyDate').value = getTodayStr(); // 編集を開始した今日の日付を自動反映
+  document.getElementById('creator').value = data.creator;
+  document.getElementById('tableStartDate').value = data.sDate;
+  document.getElementById('tableStartDate').dataset.manual = 'true'; // 復元した日付を保持し、自動反映で上書きしない
+  document.getElementById('displayDays').value = data.dDays;
+  document.getElementById('skipSat').checked = data.skipSat;
+  document.getElementById('skipSun').checked = data.skipSun;
+  document.getElementById('skipHol').checked = data.skipHol;
+  
+  const taskList = document.getElementById('taskList');
+  taskList.innerHTML = '';
+  data.tasks.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'task-row';
+    // 旧データ（終了日を保存していない）との互換：開始日と実働日数から終了日を逆算
+    let endVal = t.end;
+    if (!endVal && t.start && t.days) {
+      const computed = computeTaskEndDate(t.start, parseInt(t.days), !!t.noSkip);
+      if (computed) {
+        const yyyy2 = computed.getFullYear();
+        const mm2 = String(computed.getMonth() + 1).padStart(2, '0');
+        const dd2 = String(computed.getDate()).padStart(2, '0');
+        endVal = `${yyyy2}-${mm2}-${dd2}`;
+      }
+    }
+    row.innerHTML = `
+      <span class="mobile-label">工種</span>
+      <input type="text" list="categoryList" class="task-cat col-cat" value="${t.cat}">
+      <span class="mobile-label">工事内容</span>
+      <input type="text" list="histTaskName" class="task-name col-name" value="${t.name}" onchange="saveHistory('TaskName', this.value)">
+      <span class="mobile-label">表示形式</span>
+      <select class="task-type col-type"><option value="bar" ${t.type==='bar'?'selected':''}>実施（●→）</option><option value="arrow" ${t.type==='arrow'?'selected':''}>養生等（点線）</option></select>
+      <span class="mobile-label">日程</span>
+      <button type="button" class="date-range-btn col-range" onclick="openDateRangeModal(this)">${t.start && endVal ? formatDateWithWeekday(new Date(t.start)) + ' 〜 ' + formatDateWithWeekday(new Date(endVal)) : '開始日・終了日を選択'}</button>
+      <input type="hidden" class="task-start" value="${t.start || ''}">
+      <input type="hidden" class="task-end" value="${endVal || ''}">
+      <span class="mobile-label">実働日数(自動)</span>
+      <input type="number" class="task-days col-days" placeholder="自動計算" readonly>
+      <label class="col-check"><input type="checkbox" class="task-noskip" ${t.noSkip?'checked':''} onchange="updateTaskRange(this)"></label>
+      <div class="col-reorder">
+        <button type="button" class="reorder-btn" onclick="moveTaskRow(this, 'up')">▲</button>
+        <button type="button" class="reorder-btn" onclick="moveTaskRow(this, 'down')">▼</button>
+      </div>
+      <div class="task-end-preview"></div>
+    `;
+    taskList.appendChild(row);
+    updateTaskRange(row.querySelector('.task-start'));
+  });
+  updateConstructionStartWeekday();
+  generateGantt(); // すでにできている工程表をそのまま表示しておく
+  showScreen('edit');
+}
+</script>
+</body>
+</html>
