@@ -1,6 +1,23 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <head>
+  <!-- manifestの読み込み -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- スマホアプリ用アイコン（iOS対応用） -->
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- Service Workerの登録 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js');
+      });
+    }
+  </script>
+</head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>工程表作成</title>
