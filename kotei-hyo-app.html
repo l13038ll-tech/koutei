@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>工程表自動生成デモ</title>
+<title>工程表作成</title>
 <style>
   body { font-family: sans-serif; margin: 10px; padding: 0; background: #f4f4f4; }
   .no-print { display: block; }
@@ -189,10 +189,10 @@
 <datalist id="histTaskName"></datalist>
 
 <div class="no-print">
-  <h2>工程表アプリ デモ版</h2>
+  <h2>工程表作成</h2>
 
   <div id="screenStart" class="card" style="text-align:center;">
-    <p style="margin-top:0;">まず、どちらか選んでください。</p>
+    <p style="margin-top:0;"></p>
     <button onclick="showScreen('edit')">＋ 新規作成</button>
     <button onclick="showScreen('load')" class="secondary">📂 保存済みデータを読み込む</button>
   </div>
@@ -301,7 +301,7 @@
 
   <div class="card">
     <button onclick="generateGantt()">工程表を作成</button>
-    <button onclick="saveData()" class="success">現在の内容を保存（宛先フォルダへ格納）</button>
+    <button onclick="saveData()" class="success">保存する</button>
     <button onclick="window.print()" class="secondary">PDF出力・印刷</button>
   </div>
 
