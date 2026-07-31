@@ -9,7 +9,41 @@
   <link rel="apple-touch-icon" href="icon-192.png">
 
   <!-- Service Workerの登録 -->
-  <script>
+  <script>// 日付取得関数
+function getFormattedDate(date) {
+  const y = String(date.getFullYear()).slice(-2);
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return y + m + d;
+}
+
+// 印刷（PDF出力）を実行する関数
+function printPdf() {
+  /* ※推測による記述: 以下3行の document.getElementById('〇〇') の部分は、
+     実際のHTMLに設定したID名に書き換える必要があります。 */
+  const companyName = document.getElementById('companyName').value; // 宛先企業名
+  const projectName = document.getElementById('projectName').value; // 工事名
+  const isRevision = document.getElementById('isRevision').checked; // 修正版チェックボックス
+
+  // ファイル名を生成
+  let fileName = `${companyName}_${projectName}_${getFormattedDate(new Date())}`;
+  if (isRevision) {
+    fileName += "_修正";
+  }
+
+  // 1. 現在のページタイトルを記憶
+  const originalTitle = document.title;
+  
+  // 2. ページタイトルを生成したファイル名に変更（これがPDFのファイル名になる）
+  document.title = fileName;
+
+  // 3. ブラウザの標準印刷画面を開く
+  window.print();
+
+  // 4. 印刷画面が閉じたら、元のページタイトルに戻す
+  document.title = originalTitle;
+}
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('./sw.js');
