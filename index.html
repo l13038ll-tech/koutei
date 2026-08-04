@@ -1,60 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <head>
-  <!-- manifestの読み込み -->
-  <link rel="manifest" href="manifest.json">
-  
-  <!-- スマホアプリ用アイコン（iOS対応用） -->
-  <link rel="apple-touch-icon" href="icon-192.png">
-
-  <!-- Service Workerの登録 -->
-  <script>// 日付取得関数
-function getFormattedDate(date) {
-  const y = String(date.getFullYear()).slice(-2);
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return y + m + d;
-}
-
-// 印刷（PDF出力）を実行する関数
-function printPdf() {
-  /* ※推測による記述: 以下3行の document.getElementById('〇〇') の部分は、
-     実際のHTMLに設定したID名に書き換える必要があります。 */
-  const companyName = document.getElementById('companyName').value; // 宛先企業名
-  const projectName = document.getElementById('projectName').value; // 工事名
-  const isRevision = document.getElementById('isRevision').checked; // 修正版チェックボックス
-
-  // ファイル名を生成
-  let fileName = `${companyName}_${projectName}_${getFormattedDate(new Date())}`;
-  if (isRevision) {
-    fileName += "_修正";
-  }
-
-  // 1. 現在のページタイトルを記憶
-  const originalTitle = document.title;
-  
-  // 2. ページタイトルを生成したファイル名に変更（これがPDFのファイル名になる）
-  document.title = fileName;
-
-  // 3. ブラウザの標準印刷画面を開く
-  window.print();
-
-  // 4. 印刷画面が閉じたら、元のページタイトルに戻す
-  document.title = originalTitle;
-}
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js');
-      });
-    }
-  </script>
-</head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>工程表作成</title>
+<title>工程表自動生成デモ</title>
 <style>
   body { font-family: sans-serif; margin: 10px; padding: 0; background: #f4f4f4; }
   .no-print { display: block; }
@@ -160,6 +109,29 @@ function printPdf() {
   .file-list-row:active, .file-list-row:hover { background: #eef5ff; }
   .file-list-row td { border: 1px solid #ccc; padding: 6px; }
 
+  .supervisor-chip {
+    display: inline-block; width: auto; flex: 0 0 auto; white-space: nowrap;
+    padding: 6px 14px; border-radius: 16px;
+    background: #eee; border: 1px solid #ccc; color: #333;
+    font-size: 13px; cursor: pointer; margin: 0;
+  }
+  .supervisor-chip.active { background: #0066cc; border-color: #0066cc; color: #fff; font-weight: bold; }
+
+  .supervisor-chip-row {
+    display: flex; flex-wrap: nowrap; gap: 6px; margin-top: 6px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px;
+  }
+
+  /* 保存完了などを知らせるトースト通知 */
+  .app-toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(16px);
+    background: rgba(20,20,20,0.92); color: #fff; padding: 12px 22px; border-radius: 8px;
+    font-size: 14px; z-index: 2000; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    max-width: 88%; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .app-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   @media print {
     .preview-outer { display: none !important; }
   }
@@ -240,10 +212,9 @@ function printPdf() {
 <datalist id="histTaskName"></datalist>
 
 <div class="no-print">
-  <h2>工程表作成</h2>
+  <h2>工程表アプリ デモ版</h2>
 
   <div id="screenStart" class="card" style="text-align:center;">
-    <p style="margin-top:0;"></p>
     <button onclick="showScreen('edit')">＋ 新規作成</button>
     <button onclick="showScreen('load')" class="secondary">📂 保存済みデータを読み込む</button>
   </div>
@@ -251,21 +222,23 @@ function printPdf() {
   <div id="screenLoad" style="display:none;">
     <div class="card" style="background: #e9ecef;">
       <h3>📂 宛先フォルダ切替・データ読込</h3>
-      <label>宛先フォルダ:</label>
-      <select id="folderSelect" onchange="onFolderSelected()"><option value="">-- 保存データなし --</option></select>
+      <label>宛先フォルダ（絞り込み・任意）:</label>
+      <select id="folderSelect" onchange="onFolderSelected()"><option value="">-- すべての宛先 --</option></select>
 
-      <div id="fileListArea" style="display:none; margin-top:12px;">
+      <div id="fileListArea" style="margin-top:12px;">
         <label>工事担当者で絞り込み:</label>
-        <input type="text" id="supervisorFilter" oninput="renderFileList()" placeholder="担当者名の一部を入力">
+        <div id="supervisorFilterButtons" class="supervisor-chip-row"></div>
 
         <div style="overflow-x:auto; margin-top:8px;">
           <table id="fileListTable" style="width:100%; border-collapse:collapse; font-size:13px; background:#fff;">
             <thead>
               <tr>
+                <th class="sort-th" onclick="sortFileList('dest')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">宛先<span id="sortIcon-dest"></span></th>
                 <th class="sort-th" onclick="sortFileList('proj')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">工事名<span id="sortIcon-proj"></span></th>
                 <th class="sort-th" onclick="sortFileList('supervisor')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">担当者<span id="sortIcon-supervisor"></span></th>
                 <th class="sort-th" onclick="sortFileList('cDate')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">作成日<span id="sortIcon-cDate"></span></th>
                 <th class="sort-th" onclick="sortFileList('mDate')" style="border:1px solid #ccc; padding:6px; cursor:pointer; background:#eee;">修正日<span id="sortIcon-mDate"></span></th>
+                <th style="border:1px solid #ccc; padding:6px; background:#eee;">操作</th>
               </tr>
             </thead>
             <tbody id="fileListBody"></tbody>
@@ -287,13 +260,22 @@ function printPdf() {
       <div><label>工事名:</label><input type="text" id="projectName" list="histProjectName" placeholder="記入例：△△邸 新築工事" onchange="saveHistory('ProjectName', this.value)"></div>
     </div>
     
-    <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px; flex-wrap: wrap;">
-      <label>工事開始日:</label><input type="date" id="tableStartDate" oninput="markConstructionStartManual()"><span id="constructionStartWeekday" class="start-weekday"></span>
-      <button class="auto-btn" onclick="resetConstructionStartAuto()">最古の開始日を自動反映</button>
+    <div style="margin-top: 8px; font-size: 13px;">
+      工事開始日: <span id="constructionStartDisplay" style="font-weight:bold; color:#0066cc;">未設定（工程を入力すると自動反映されます）</span>
+    </div>
+    <details style="margin-top: 4px;">
+      <summary style="font-size: 12px; color: #555; cursor: pointer;">工事開始日を手動で設定（オプション）</summary>
+      <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap;">
+        <input type="date" id="tableStartDate" oninput="markConstructionStartManual()"><span id="constructionStartWeekday" class="start-weekday"></span>
+        <button class="auto-btn" onclick="resetConstructionStartAuto()">自動（最古の開始日）に戻す</button>
+      </div>
+    </details>
+
+    <div style="display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap;">
       <label>表示日数（空欄で自動）:</label><input type="number" id="displayDays" placeholder="自動" style="width: 80px;">
       <button class="auto-btn" onclick="resetDisplayDaysAuto()">自動計算に戻す</button>
     </div>
-    <p style="font-size: 11px; color: #777; margin: 4px 0 0;">工事開始日は各工程のうち最も古い開始日を自動反映します（直接カレンダーで選ぶと手動設定に切り替わります）。表は工事開始日の3日前〜工事終了日の3日後を自動表示します（表示日数を入力すると手動で上書き可能）。</p>
+    <p style="font-size: 11px; color: #777; margin: 4px 0 0;">工事開始日は各工程のうち最も古い開始日を自動反映します。表は工事開始日の3日前〜工事終了日の3日後を自動表示します（表示日数を入力すると手動で上書き可能）。</p>
 
     <div class="grid-2col" style="margin-top: 10px;">
       <div><label>作成日:</label><input type="date" id="createDate"></div>
@@ -352,7 +334,8 @@ function printPdf() {
 
   <div class="card">
     <button onclick="generateGantt()">工程表を作成</button>
-    <button onclick="saveData()" class="success">保存する</button>
+    <button onclick="saveData('overwrite')" class="success">上書き保存（宛先フォルダへ格納）</button>
+    <button onclick="saveData('new')" class="success" style="background:#1f9d55;">新規保存（別データとして保存）</button>
     <button onclick="window.print()" class="secondary">PDF出力・印刷</button>
   </div>
 
@@ -444,6 +427,27 @@ function isHoliday(dateObj) {
   const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
   const dd = String(dateObj.getDate()).padStart(2, '0');
   return publicHolidays.includes(`${yyyy}-${mm}-${dd}`);
+}
+
+// 保存完了などを知らせる、自動で消える控えめなポップアップ通知
+function showToast(message) {
+  let toast = document.getElementById('appToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'appToast';
+    toast.className = 'app-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  // 再表示のたびにアニメーションをリセット
+  toast.classList.remove('show');
+  void toast.offsetWidth;
+  toast.classList.add('show');
+
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2200);
 }
 
 function getTodayStr() {
@@ -546,8 +550,23 @@ function updateTaskRange(el) {
 function updateConstructionStartWeekday() {
   const input = document.getElementById('tableStartDate');
   const span = document.getElementById('constructionStartWeekday');
-  if (!input || !span) return;
-  span.textContent = input.value ? formatDateWithWeekday(new Date(input.value)) : '';
+  if (input && span) {
+    span.textContent = input.value ? formatDateWithWeekday(new Date(input.value)) : '';
+  }
+  updateConstructionStartDisplay();
+}
+
+// 折りたたみを開かなくても分かるよう、常時表示の工事開始日ステータスを更新する
+function updateConstructionStartDisplay() {
+  const input = document.getElementById('tableStartDate');
+  const display = document.getElementById('constructionStartDisplay');
+  if (!input || !display) return;
+  if (!input.value) {
+    display.textContent = '未設定（工程を入力すると自動反映されます）';
+    return;
+  }
+  const mode = (input.dataset.manual === 'true') ? '手動設定' : '自動：最古の開始日';
+  display.textContent = `${formatDateWithWeekday(new Date(input.value))}　（${mode}）`;
 }
 
 // 工程行に入力されている中で、最も古い開始日を取得する
@@ -971,10 +990,27 @@ function scalePreview() {
 window.addEventListener('resize', scalePreview);
 window.addEventListener('orientationchange', scalePreview);
 
-function saveData() {
+// mode: 'overwrite'（現在の宛先＋工事名にそのまま保存） / 'new'（既存と重複する場合は別名で新規保存）
+function saveData(mode) {
   const dest = document.getElementById('destination').value.trim() || '未分類';
-  const proj = document.getElementById('projectName').value.trim() || '名称未設定';
-  
+  let proj = document.getElementById('projectName').value.trim() || '名称未設定';
+
+  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
+  if (!db[dest]) db[dest] = {};
+
+  const isDuplicate = !!db[dest][proj];
+  let renamed = false;
+
+  if (mode === 'new' && isDuplicate) {
+    // 同じ宛先・工事名が既にある場合は、上書きせず連番を付けて新規保存する
+    let n = 2;
+    let candidate = `${proj}(${n})`;
+    while (db[dest][candidate]) { n++; candidate = `${proj}(${n})`; }
+    proj = candidate;
+    document.getElementById('projectName').value = proj; // 画面上の工事名も新しい名前に合わせる
+    renamed = true;
+  }
+
   document.getElementById('modifyDate').value = getTodayStr();
 
   let data = {
@@ -1007,12 +1043,16 @@ function saveData() {
     });
   }
 
-  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
-  if(!db[dest]) db[dest] = {};
   db[dest][proj] = data;
   localStorage.setItem('ganttAppDB', JSON.stringify(db));
-  
-  alert(`${dest} フォルダに保存しました。`);
+
+  if (renamed) {
+    showToast(`✓ 同じ宛先・工事名のデータが既にあったため、「${proj}」として新規保存しました`);
+  } else if (mode === 'new') {
+    showToast(`✓ ${dest} フォルダに新規保存しました`);
+  } else {
+    showToast(`✓ ${dest} フォルダに上書き保存しました`);
+  }
   updateFolderSelect();
 }
 
@@ -1020,7 +1060,7 @@ function updateFolderSelect() {
   let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
   const folderSel = document.getElementById('folderSelect');
   const prevValue = folderSel.value;
-  folderSel.innerHTML = '<option value="">-- フォルダを選択 --</option>';
+  folderSel.innerHTML = '<option value="">-- すべての宛先 --</option>';
   for (let folder in db) {
     folderSel.innerHTML += `<option value="${folder}">${folder}</option>`;
   }
@@ -1028,15 +1068,23 @@ function updateFolderSelect() {
   onFolderSelected();
 }
 
-let fileListState = { folder: '', sortKey: 'mDate', sortDir: 'desc' };
+let fileListState = { folder: '', sortKey: 'mDate', sortDir: 'desc', filterSupervisor: '' };
 
-// 宛先フォルダを選ぶと、そのフォルダ内のデータを一覧表示する
+// 全フォルダ・全データをフラットな配列にして取得する
+function getAllSavedItems() {
+  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
+  let items = [];
+  for (const folder in db) {
+    for (const proj in db[folder]) {
+      items.push({ folder, proj, data: db[folder][proj] });
+    }
+  }
+  return items;
+}
+
+// 宛先フォルダは任意の絞り込み。変更されるたびに一覧を更新する
 function onFolderSelected() {
-  const folder = document.getElementById('folderSelect').value;
-  fileListState.folder = folder;
-  const area = document.getElementById('fileListArea');
-  if (!folder) { area.style.display = 'none'; return; }
-  area.style.display = 'block';
+  fileListState.folder = document.getElementById('folderSelect').value;
   renderFileList();
 }
 
@@ -1051,33 +1099,71 @@ function sortFileList(key) {
   renderFileList();
 }
 
+// 担当者候補をタップして絞り込む（同じ候補を再タップすると解除して「すべて」に戻る）
+function selectSupervisorFilter(name) {
+  fileListState.filterSupervisor = (fileListState.filterSupervisor === name) ? '' : name;
+  renderFileList();
+}
+
+// これまでに入力された担当者名を候補ボタンとして並べる（宛先の絞込がかかっていればその範囲内で）
+function renderSupervisorFilterButtons(items) {
+  const container = document.getElementById('supervisorFilterButtons');
+  container.innerHTML = '';
+
+  const names = Array.from(new Set(
+    items.map(it => (it.data.supervisor || '').trim()).filter(Boolean)
+  )).sort();
+
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.className = 'supervisor-chip' + (fileListState.filterSupervisor === '' ? ' active' : '');
+  allBtn.textContent = 'すべて';
+  allBtn.onclick = () => selectSupervisorFilter('');
+  container.appendChild(allBtn);
+
+  names.forEach(name => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'supervisor-chip' + (fileListState.filterSupervisor === name ? ' active' : '');
+    btn.textContent = name;
+    btn.onclick = () => selectSupervisorFilter(name);
+    container.appendChild(btn);
+  });
+}
+
 function renderFileList() {
-  const folder = fileListState.folder;
   const body = document.getElementById('fileListBody');
   const emptyMsg = document.getElementById('fileListEmpty');
   body.innerHTML = '';
 
-  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
-  const folderData = (folder && db[folder]) ? db[folder] : {};
+  let items = getAllSavedItems();
 
-  // 工事担当者名での絞り込み
-  const filterText = (document.getElementById('supervisorFilter').value || '').trim().toLowerCase();
-  let items = Object.keys(folderData).map(proj => ({ proj, data: folderData[proj] }));
-  if (filterText) {
-    items = items.filter(it => (it.data.supervisor || '').toLowerCase().includes(filterText));
+  // 宛先フォルダの絞り込み（選択されていれば）
+  if (fileListState.folder) {
+    items = items.filter(it => it.folder === fileListState.folder);
+  }
+
+  // 担当者の候補ボタンは、宛先の絞込後の範囲から生成する
+  renderSupervisorFilterButtons(items);
+
+  // 担当者候補での絞り込み
+  if (fileListState.filterSupervisor) {
+    items = items.filter(it => (it.data.supervisor || '').trim() === fileListState.filterSupervisor);
   }
 
   const key = fileListState.sortKey;
   const dir = fileListState.sortDir === 'asc' ? 1 : -1;
   items.sort((a, b) => {
-    const va = (key === 'proj') ? a.proj : (a.data[key] || '');
-    const vb = (key === 'proj') ? b.proj : (b.data[key] || '');
+    let va, vb;
+    if (key === 'proj') { va = a.proj; vb = b.proj; }
+    else if (key === 'dest') { va = a.folder; vb = b.folder; }
+    else { va = a.data[key] || ''; vb = b.data[key] || ''; }
     if (va < vb) return -1 * dir;
     if (va > vb) return 1 * dir;
     return 0;
   });
 
-  ['proj', 'supervisor', 'cDate', 'mDate'].forEach(k => {
+  ['dest', 'proj', 'supervisor', 'cDate', 'mDate'].forEach(k => {
     const icon = document.getElementById('sortIcon-' + k);
     if (icon) icon.textContent = (fileListState.sortKey === k) ? (fileListState.sortDir === 'asc' ? ' ▲' : ' ▼') : '';
   });
@@ -1088,15 +1174,45 @@ function renderFileList() {
   items.forEach(it => {
     const tr = document.createElement('tr');
     tr.className = 'file-list-row';
-    tr.onclick = () => loadSavedItem(folder, it.proj);
-    tr.innerHTML = `
-      <td>${escapeHtml(it.proj)}</td>
-      <td>${escapeHtml(it.data.supervisor || '')}</td>
-      <td>${escapeHtml(it.data.cDate || '')}</td>
-      <td>${escapeHtml(it.data.mDate || '')}</td>
-    `;
+    tr.onclick = () => loadSavedItem(it.folder, it.proj);
+
+    const tdDest = document.createElement('td'); tdDest.textContent = it.folder;
+    const tdProj = document.createElement('td'); tdProj.textContent = it.proj;
+    const tdSup = document.createElement('td'); tdSup.textContent = it.data.supervisor || '';
+    const tdC = document.createElement('td'); tdC.textContent = it.data.cDate || '';
+    const tdM = document.createElement('td'); tdM.textContent = it.data.mDate || '';
+
+    const tdDel = document.createElement('td');
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.textContent = '削除';
+    delBtn.className = 'secondary';
+    delBtn.style.cssText = 'background:#c0392b; width:auto; padding:4px 10px; font-size:12px; margin:0;';
+    delBtn.onclick = (e) => { e.stopPropagation(); deleteSavedItem(it.folder, it.proj); };
+    tdDel.appendChild(delBtn);
+
+    tr.appendChild(tdDest);
+    tr.appendChild(tdProj);
+    tr.appendChild(tdSup);
+    tr.appendChild(tdC);
+    tr.appendChild(tdM);
+    tr.appendChild(tdDel);
     body.appendChild(tr);
   });
+}
+
+// 保存データを削除する（確認ダイアログを経てから削除）
+function deleteSavedItem(folder, proj) {
+  const ok = confirm(`「${proj}」を削除します。\nこの操作は取り消せません。よろしいですか？`);
+  if (!ok) return;
+
+  let db = JSON.parse(localStorage.getItem('ganttAppDB')) || {};
+  if (db[folder]) {
+    delete db[folder][proj];
+    if (Object.keys(db[folder]).length === 0) delete db[folder]; // フォルダ内が空になったらフォルダごと削除
+  }
+  localStorage.setItem('ganttAppDB', JSON.stringify(db));
+  updateFolderSelect(); // フォルダ一覧・一覧表示を最新状態に更新
 }
 
 function loadSavedItem(folder, proj) {
