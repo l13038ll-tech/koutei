@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0106)file:///C:/Users/d_sum/Documents/Codex/2026-08-06/https-github-com-l13038ll-tech-koutei/outputs/index.html -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>工程表生成アプリ</title>
+<title>工程表自動生成デモ</title>
 <style>
   :root {
     --ios-blue: #007AFF;
@@ -305,54 +305,54 @@
 <body onload="initApp()">
 
 <datalist id="categoryList">
-  <option value="仮設工事"><option value="土工事"><option value="鉄筋工事">
-  <option value="型枠工事"><option value="コンクリート工事"><option value="内装工事">
-  <option value="外壁工事"><option value="屋根工事"><option value="板金工事">
-</datalist>
-<datalist id="histDestination"></datalist>
-<datalist id="histProjectName"></datalist>
-<datalist id="histCreator"></datalist>
-<datalist id="histCompanyName"></datalist>
+  <option value="仮設工事"></option><option value="土工事"></option><option value="鉄筋工事">
+  </option><option value="型枠工事"></option><option value="コンクリート工事"></option><option value="内装工事">
+  </option><option value="外壁工事"></option><option value="屋根工事"></option><option value="板金工事">
+</option></datalist>
+<datalist id="histDestination"><option value="平川工業株式会社　殿"></option><option value="平川工業株式会社"></option></datalist>
+<datalist id="histProjectName"><option value="○○工事"></option></datalist>
+<datalist id="histCreator"><option value="角　大地"></option></datalist>
+<datalist id="histCompanyName"><option value="角建工有限会社"></option></datalist>
 <datalist id="histSupervisor"></datalist>
-<datalist id="histTaskName"></datalist>
+<datalist id="histTaskName"><option value="外部足場撤去"></option><option value="外壁撤去張替"></option><option value="外部足場"></option></datalist>
 
 <div class="no-print">
 
-  <div id="screenStart" class="ios-screen" style="text-align:center; padding: 60px 24px 24px;">
+  <div id="screenStart" class="ios-screen" style="text-align: center; padding: 60px 24px 24px; display: block;">
     <div style="font-size:52px; margin-bottom:8px;">🏗️</div>
     <div style="font-size:26px; font-weight:700; margin-bottom:6px;">工程表アプリ</div>
     <div style="font-size:14px; color: var(--ios-secondary-label); margin-bottom:36px;">はじめに、どちらか選んでください</div>
-    <button onclick="showScreen('edit')" style="max-width:320px; margin:8px auto; display:block;">＋ 新規作成</button>
-    <button onclick="showScreen('load')" class="secondary" style="max-width:320px; margin:8px auto; display:block;">📂 保存済みデータを読み込む</button>
+    <button onclick="showScreen(&#39;edit&#39;)" style="max-width:320px; margin:8px auto; display:block;">＋ 新規作成</button>
+    <button onclick="showScreen(&#39;load&#39;)" class="secondary" style="max-width:320px; margin:8px auto; display:block;">📂 保存済みデータを読み込む</button>
   </div>
 
   <div id="screenLoad" class="ios-screen" style="display:none;">
     <div class="ios-navbar">
-      <button class="nav-back" onclick="showScreen('start')">‹ 戻る</button>
+      <button class="nav-back" onclick="showScreen(&#39;start&#39;)">‹ 戻る</button>
       <div class="nav-title">データ読込</div>
     </div>
     <div class="card">
       <h3>宛先フォルダ切替・データ読込</h3>
       <label>宛先フォルダ（絞り込み・任意）:</label>
-      <select id="folderSelect" onchange="onFolderSelected()"><option value="">-- すべての宛先 --</option></select>
+      <select id="folderSelect" onchange="onFolderSelected()"><option value="">-- すべての宛先 --</option><option value="平川工業株式会社　殿">平川工業株式会社　殿</option><option value="平川工業株式会社">平川工業株式会社</option></select>
 
       <div id="fileListArea" style="margin-top:12px;">
         <label>工事担当者で絞り込み:</label>
-        <div id="supervisorFilterButtons" class="supervisor-chip-row"></div>
+        <div id="supervisorFilterButtons" class="supervisor-chip-row"><button type="button" class="supervisor-chip active">すべて</button></div>
 
         <div style="overflow-x:auto; overflow-y:hidden; margin-top:8px; border-radius:10px; border: 0.5px solid var(--ios-gray4);">
           <table id="fileListTable" style="width:100%; border-collapse:collapse; font-size:13px; background:#fff;">
             <thead>
               <tr>
-                <th class="sort-th" onclick="sortFileList('dest')" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">宛先<span id="sortIcon-dest"></span></th>
-                <th class="sort-th" onclick="sortFileList('proj')" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">工事名<span id="sortIcon-proj"></span></th>
-                <th class="sort-th" onclick="sortFileList('supervisor')" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">担当者<span id="sortIcon-supervisor"></span></th>
-                <th class="sort-th" onclick="sortFileList('cDate')" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">作成日<span id="sortIcon-cDate"></span></th>
-                <th class="sort-th" onclick="sortFileList('mDate')" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">修正日<span id="sortIcon-mDate"></span></th>
+                <th class="sort-th" onclick="sortFileList(&#39;dest&#39;)" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">宛先<span id="sortIcon-dest"></span></th>
+                <th class="sort-th" onclick="sortFileList(&#39;proj&#39;)" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">工事名<span id="sortIcon-proj"></span></th>
+                <th class="sort-th" onclick="sortFileList(&#39;supervisor&#39;)" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">担当者<span id="sortIcon-supervisor"></span></th>
+                <th class="sort-th" onclick="sortFileList(&#39;cDate&#39;)" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">作成日<span id="sortIcon-cDate"></span></th>
+                <th class="sort-th" onclick="sortFileList(&#39;mDate&#39;)" style="padding:8px 6px; cursor:pointer; background:var(--ios-gray-bg); font-weight:600; text-align:left;">修正日<span id="sortIcon-mDate"> ▼</span></th>
                 <th style="padding:8px 6px; background:var(--ios-gray-bg);"></th>
               </tr>
             </thead>
-            <tbody id="fileListBody"></tbody>
+            <tbody id="fileListBody"><tr class="file-list-row"><td>平川工業株式会社　殿</td><td>○○工事</td><td></td><td>2026-07-31</td><td>2026-07-31</td><td><button type="button" class="secondary" style="background: rgb(255, 59, 48); color: rgb(255, 255, 255); width: auto; padding: 6px 12px; font-size: 12px; font-weight: 600; margin: 0px; border-radius: 8px;">削除</button></td></tr><tr class="file-list-row"><td>平川工業株式会社</td><td>undefined</td><td></td><td></td><td>2026-07-31</td><td><button type="button" class="secondary" style="background: rgb(255, 59, 48); color: rgb(255, 255, 255); width: auto; padding: 6px 12px; font-size: 12px; font-weight: 600; margin: 0px; border-radius: 8px;">削除</button></td></tr></tbody>
           </table>
         </div>
         <p id="fileListEmpty" style="font-size:12px; color:var(--ios-secondary-label); display:none;">該当するデータがありません。</p>
@@ -362,14 +362,50 @@
 
   <div id="screenEdit" class="ios-screen" style="display:none;">
   <div class="ios-navbar">
-    <button class="nav-back" onclick="showScreen('start')">‹ 戻る</button>
-    <div class="nav-title">工程表を作成</div>
+    <button class="nav-back" onclick="showScreen(&#39;start&#39;)">‹ 戻る</button>
+    <div class="nav-title">工程表を編集</div>
+  </div>
+  <div class="card" style="background:#fff7e6;">
+    <h3 style="margin-top:0;">📷 手書き工程表から読み込む（AI画像認識・無料）</h3>
+    <details>
+      <summary style="font-size:12px; color:#555; cursor:pointer;">読み込み機能について</summary>
+      <p style="font-size:11px; color:#777; margin:8px 0;">
+        写真をアップロードすると、Google の Gemini API(無料枠あり)へ送信して工種・工事内容・日程を自動で読み取り、工程として追加します。
+        無料枠の範囲内であれば料金はかかりません（クレジットカード登録も不要です）。
+      </p>
+    </details>
+    <details id="apiKeySection" style="margin-top:8px;">
+      <summary style="font-size:12px; color:#555; cursor:pointer;">APIキーの設定（初回のみ・無料で取得できます）</summary>
+      <div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <input type="password" id="apiKeyInput" placeholder="AIza... を入力" style="flex:1; min-width:200px;">
+        <button type="button" class="secondary" style="width:auto; padding:6px 15px;" onclick="saveApiKey()">保存</button>
+      </div>
+      <p style="font-size:11px; color:#777; margin:4px 0 0;">
+        APIキーはこの端末のブラウザ内にのみ保存され、Google以外には送信されません。
+        キーは <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>（Google AI Studio）で無料で取得できます。
+        無料枠のデータはGoogleのモデル改善に利用される場合があるとされているため、機密性の高い工程表の扱いにはご注意ください。
+      </p>
+    </details>
+    <div class="image-select-buttons">
+      <label class="image-select-label camera">
+        写真を撮る
+        <input type="file" id="scheduleCameraInput" accept="image/*" capture="environment" onchange="handleScheduleImageSelected(this)">
+      </label>
+      <label class="image-select-label">
+        写真を選ぶ
+        <input type="file" id="scheduleImageInput" accept="image/*" onchange="handleScheduleImageSelected(this)">
+      </label>
+    </div>
+    <p id="ocrStatus" style="font-size:12px; color:#0066cc; margin:8px 0 0; display:none;"></p>
+    <div id="ocrProgress" class="ocr-progress" style="display:none;" role="status" aria-label="画像を読み取り中">
+      <div class="ocr-progress-bar"></div>
+    </div>
   </div>
   <div class="card">
     <h3>基本情報</h3>
     <div class="grid-2col">
-      <div><label>宛先:</label><input type="text" id="destination" list="histDestination" placeholder="記入例：〇〇建設株式会社（殿は自動で付きます）" onchange="saveHistory('Destination', this.value)"></div>
-      <div><label>工事名:</label><input type="text" id="projectName" list="histProjectName" placeholder="記入例：△△邸 新築工事" onchange="saveHistory('ProjectName', this.value)"></div>
+      <div><label>宛先:</label><input type="text" id="destination" list="histDestination" placeholder="記入例：〇〇建設株式会社（殿は自動で付きます）" onchange="saveHistory(&#39;Destination&#39;, this.value)"></div>
+      <div><label>工事名:</label><input type="text" id="projectName" list="histProjectName" placeholder="記入例：△△邸 新築工事" onchange="saveHistory(&#39;ProjectName&#39;, this.value)"></div>
     </div>
     
     <div style="margin-top: 8px; font-size: 13px;">
@@ -392,16 +428,16 @@
     <div class="grid-2col" style="margin-top: 10px;">
       <div><label>作成日:</label><input type="date" id="createDate"></div>
       <div><label>修正日:</label><input type="date" id="modifyDate"></div>
-      <div><label>作成者:</label><input type="text" id="creator" list="histCreator" placeholder="記入例：山田 太郎" onchange="saveHistory('Creator', this.value)"></div>
-      <div><label>施行:</label><input type="text" id="companyName" list="histCompanyName" placeholder="記入例：□□工業株式会社" onchange="saveHistory('CompanyName', this.value)"></div>
-      <div><label>工事担当者:</label><input type="text" id="supervisor" list="histSupervisor" placeholder="記入例：鈴木 一郎" onchange="saveHistory('Supervisor', this.value)"></div>
+      <div><label>作成者:</label><input type="text" id="creator" list="histCreator" placeholder="記入例：山田 太郎" onchange="saveHistory(&#39;Creator&#39;, this.value)"></div>
+      <div><label>施行:</label><input type="text" id="companyName" list="histCompanyName" placeholder="記入例：□□工業株式会社" onchange="saveHistory(&#39;CompanyName&#39;, this.value)"></div>
+      <div><label>工事担当者:</label><input type="text" id="supervisor" list="histSupervisor" placeholder="記入例：鈴木 一郎" onchange="saveHistory(&#39;Supervisor&#39;, this.value)"></div>
     </div>
     <p style="font-size: 11px; color: #777; margin: 4px 0 0;">※工事担当者は工程表には印字されません。読込画面の一覧で絞り込む際に使用します。</p>
     <div style="margin-top:10px;">
       <label style="font-size:13px; color:var(--ios-secondary-label);">休日として飛ばす日:</label>
-      <div class="toggle-row"><span>土曜</span><label class="ios-toggle"><input type="checkbox" id="skipSat" checked><span class="track"><span class="thumb"></span></span></label></div>
-      <div class="toggle-row"><span>日曜</span><label class="ios-toggle"><input type="checkbox" id="skipSun" checked><span class="track"><span class="thumb"></span></span></label></div>
-      <div class="toggle-row"><span>祝日</span><label class="ios-toggle"><input type="checkbox" id="skipHol" checked><span class="track"><span class="thumb"></span></span></label></div>
+      <div class="toggle-row"><span>土曜</span><label class="ios-toggle"><input type="checkbox" id="skipSat" checked=""><span class="track"><span class="thumb"></span></span></label></div>
+      <div class="toggle-row"><span>日曜</span><label class="ios-toggle"><input type="checkbox" id="skipSun" checked=""><span class="track"><span class="thumb"></span></span></label></div>
+      <div class="toggle-row"><span>祝日</span><label class="ios-toggle"><input type="checkbox" id="skipHol" checked=""><span class="track"><span class="thumb"></span></span></label></div>
     </div>
   </div>
 
@@ -423,7 +459,7 @@
         <span class="mobile-label">工種</span>
         <input type="text" list="categoryList" class="task-cat col-cat" placeholder="例：土工事">
         <span class="mobile-label">工事内容</span>
-        <input type="text" list="histTaskName" class="task-name col-name" placeholder="例：基礎工事" onchange="saveHistory('TaskName', this.value)">
+        <input type="text" list="histTaskName" class="task-name col-name" placeholder="例：基礎工事" onchange="saveHistory(&#39;TaskName&#39;, this.value)">
         <span class="mobile-label">表示形式</span>
         <select class="task-type col-type" onchange="onTaskTypeChanged(this)"><option value="bar">実施（●→）</option><option value="arrow">養生等（点線）</option></select>
         <span class="mobile-label">日程</span>
@@ -431,11 +467,11 @@
         <input type="hidden" class="task-start">
         <input type="hidden" class="task-end">
         <span class="mobile-label">実働日数(自動)</span>
-        <input type="number" class="task-days col-days" placeholder="自動計算" readonly>
+        <input type="number" class="task-days col-days" placeholder="自動計算" readonly="">
         <label class="col-check"><span class="ios-toggle"><input type="checkbox" class="task-noskip" onchange="updateTaskRange(this)"><span class="track"><span class="thumb"></span></span></span></label>
         <div class="col-reorder">
-          <button type="button" class="reorder-btn" onclick="moveTaskRow(this, 'up')">▲</button>
-          <button type="button" class="reorder-btn" onclick="moveTaskRow(this, 'down')">▼</button>
+          <button type="button" class="reorder-btn" onclick="moveTaskRow(this, &#39;up&#39;)">▲</button>
+          <button type="button" class="reorder-btn" onclick="moveTaskRow(this, &#39;down&#39;)">▼</button>
         </div>
         <div class="task-end-preview"></div>
       </div>
@@ -444,45 +480,9 @@
     <button class="add-btn" onclick="addTaskRow()">＋ 工程を追加</button>
   </div>
 
-  <div class="card" style="background:#fff7e6;">
-    <h3 style="margin-top:0;">📷 手書き工程表から読み込む（AI画像認識・無料）</h3>
-    <p style="font-size:11px; color:#777; margin:0 0 8px;">
-      写真をアップロードすると、Google の Gemini API(無料枠あり)へ送信して工種・工事内容・日程を自動で読み取り、工程として追加します。
-      無料枠の範囲内であれば料金はかかりません（クレジットカード登録も不要です）。
-    </p>
-    <details id="apiKeySection">
-      <summary style="font-size:12px; color:#555; cursor:pointer;">APIキーの設定（初回のみ・無料で取得できます）</summary>
-      <div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-        <input type="password" id="apiKeyInput" placeholder="AIza... を入力" style="flex:1; min-width:200px;">
-        <button type="button" class="secondary" style="width:auto; padding:6px 15px;" onclick="saveApiKey()">保存</button>
-      </div>
-      <p style="font-size:11px; color:#777; margin:4px 0 0;">
-        APIキーはこの端末のブラウザ内にのみ保存され、Google以外には送信されません。
-        キーは <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>（Google AI Studio）で無料で取得できます。
-        無料枠のデータはGoogleのモデル改善に利用される場合があるとされているため、機密性の高い工程表の扱いにはご注意ください。
-      </p>
-    </details>
-
-    <div class="image-select-buttons">
-      <label class="image-select-label camera">
-        カメラで撮影
-        <input type="file" id="scheduleCameraInput" accept="image/*" capture="environment" onchange="handleScheduleImageSelected(this)">
-      </label>
-      <label class="image-select-label">
-        カメラロールから選択
-        <input type="file" id="scheduleImageInput" accept="image/*" onchange="handleScheduleImageSelected(this)">
-      </label>
-    </div>
-    <p id="ocrStatus" style="font-size:12px; color:#0066cc; margin:8px 0 0; display:none;"></p>
-    <div id="ocrProgress" class="ocr-progress" style="display:none;" role="status" aria-label="画像を読み取り中">
-      <div class="ocr-progress-bar"></div>
-    </div>
-  </div>
-
   <div class="card">
-    <button onclick="generateGantt()">工程表を作成</button>
-    <button onclick="saveData('overwrite')" class="success">上書き保存（宛先フォルダへ格納）</button>
-    <button onclick="saveData('new')" class="success" style="background:#1f9d55;">新規保存（別データとして保存）</button>
+    <button onclick="saveData(&#39;overwrite&#39;)" class="success">上書き保存（宛先フォルダへ格納）</button>
+    <button onclick="saveData(&#39;new&#39;)" class="success" style="background:#1f9d55;">新規保存（別データとして保存）</button>
     <button onclick="window.print()" class="secondary">PDF出力・印刷</button>
   </div>
 
@@ -510,7 +510,7 @@
     <div id="calSelectionText" class="cal-selection-text"></div>
     <div class="modal-footer">
       <button type="button" class="secondary" style="flex:1;" onclick="closeDateRangeModal()">キャンセル</button>
-      <button type="button" id="calDoneBtn" class="success" style="flex:1;" onclick="confirmDateRange()" disabled>完了</button>
+      <button type="button" id="calDoneBtn" class="success" style="flex:1;" onclick="confirmDateRange()" disabled="">完了</button>
     </div>
   </div>
 </div>
@@ -525,7 +525,21 @@ function initApp() {
   updateFolderSelect();
   ['Destination', 'ProjectName', 'Creator', 'CompanyName', 'Supervisor', 'TaskName'].forEach(renderHistoryDatalist);
   updateConstructionStartWeekday();
+  document.addEventListener('input', requestGanttUpdate);
+  document.addEventListener('change', requestGanttUpdate);
   showScreen('start');
+}
+
+let ganttUpdateTimer;
+function requestGanttUpdate(event) {
+  const editableSelector = '#destination, #projectName, #companyName, #supervisor, #createDate, #modifyDate, #creator, #tableStartDate, #displayDays, #skipSat, #skipSun, #skipHol, .task-cat, .task-name, .task-type, .task-noskip';
+  if (event && !event.target.matches(editableSelector)) return;
+
+  clearTimeout(ganttUpdateTimer);
+  ganttUpdateTimer = setTimeout(() => {
+    // 開始日が未設定の状態では、警告を出さずに入力待ちにする。
+    if (document.getElementById('tableStartDate').value) generateGantt();
+  }, 250);
 }
 
 /* ===== 画面切り替え（初期画面／読込画面／作成・編集画面） ===== */
@@ -878,6 +892,7 @@ function confirmDateRange() {
   updateTaskRange(startInput);
   syncConstructionStartDate();
   closeDateRangeModal();
+  requestGanttUpdate();
 }
 
 /* 入力済みの全工程から、実働日数ベースでの最終日（最も遅い終了日）を求める */
@@ -938,6 +953,7 @@ function moveTaskRow(btn, direction) {
     const next = row.nextElementSibling;
     if (next) row.parentNode.insertBefore(next, row);
   }
+  requestGanttUpdate();
 }
 
 function addTaskRow() {
@@ -965,6 +981,7 @@ function addTaskRow() {
     <div class="task-end-preview"></div>
   `;
   list.appendChild(row);
+  requestGanttUpdate();
   return row;
 }
 
@@ -1108,6 +1125,7 @@ function applyRecognizedTasks(tasks) {
     }
   });
   syncConstructionStartDate();
+  requestGanttUpdate();
 }
 
 
@@ -1583,5 +1601,6 @@ function loadSavedItem(folder, proj) {
   showScreen('edit');
 }
 </script>
-</body>
-</html>
+
+
+</body></html>
