@@ -435,7 +435,7 @@
     <p style="font-size: 11px; color: #777; margin: 4px 0 0;">工事開始日は各工程のうち最も古い開始日を自動反映します。表は工事開始日の3日前〜工事終了日の3日後を自動表示します（表示日数を入力すると手動で上書き可能）。</p>
 
     <div class="grid-2col" style="margin-top: 10px;">
-      <div><label>作成日:</label><input type="date" id="createDate"></div>
+      <div><label>作成日（初回保存日）:</label><input type="date" id="createDate" readonly></div>
       <div><label>修正日:</label><input type="date" id="modifyDate"></div>
       <div><label>作成者:</label><input type="text" id="creator" list="histCreator" placeholder="記入例：山田 太郎" onchange="saveHistory('Creator', this.value)"></div>
       <div><label>施行:</label><input type="text" id="companyName" list="histCompanyName" placeholder="記入例：□□工業株式会社" onchange="saveHistory('CompanyName', this.value)"></div>
@@ -530,6 +530,9 @@
 const publicHolidays = ['2026-08-11', '2026-09-21', '2026-09-22', '2026-09-23'];
 
 function initApp() {
+  // スワイプで直ちにアプリを閉じないよう、開始画面の履歴を用意する。
+  history.replaceState({ appScreen: 'start' }, '', location.href);
+  history.pushState({ appScreen: 'start' }, '', location.href);
   document.getElementById('createDate').value = getTodayStr(); // 新規作成時は作成日を自動反映
   updateFolderSelect();
   ['Destination', 'ProjectName', 'Creator', 'CompanyName', 'Supervisor', 'TaskName'].forEach(renderHistoryDatalist);
@@ -552,13 +555,24 @@ function requestGanttUpdate(event) {
 }
 
 /* ===== 画面切り替え（初期画面／読込画面／作成・編集画面） ===== */
-function showScreen(name) {
+let activeScreen = 'start';
+
+function showScreen(name, fromHistory = false) {
   document.getElementById('screenStart').style.display = (name === 'start') ? 'block' : 'none';
   document.getElementById('screenLoad').style.display = (name === 'load') ? 'block' : 'none';
   document.getElementById('screenEdit').style.display = (name === 'edit') ? 'block' : 'none';
   if (name === 'load') updateFolderSelect(); // 読込画面を開くたびに最新の保存データ一覧を反映
+  if (!fromHistory && name !== activeScreen) history.pushState({ appScreen: name }, '', location.href);
+  activeScreen = name;
   window.scrollTo(0, 0);
 }
+
+window.addEventListener('popstate', (event) => {
+  const screen = event.state && event.state.appScreen;
+  showScreen(screen || 'start', true);
+  // 戻る操作の次にアプリ終了へ進まないよう、現在画面を履歴に保持する。
+  history.pushState({ appScreen: activeScreen }, '', location.href);
+});
 
 /* ===== 直近入力履歴（各項目ごとに最大3件、端末内のみで保持） ===== */
 function escapeHtml(str) {
@@ -1343,14 +1357,20 @@ function saveData(mode) {
     renamed = true;
   }
 
-  document.getElementById('modifyDate').value = getTodayStr();
+  // 作成日は初回保存日で固定し、上書き保存時だけ修正日を更新する。
+  const today = getTodayStr();
+  const existingData = (mode === 'overwrite' && isDuplicate) ? db[dest][proj] : null;
+  const creationDate = (existingData && existingData.cDate) ? existingData.cDate : today;
+  const modificationDate = (existingData && today !== creationDate) ? today : '';
+  document.getElementById('createDate').value = creationDate;
+  document.getElementById('modifyDate').value = modificationDate;
 
   let data = {
     dest, proj, 
     cName: document.getElementById('companyName').value,
     supervisor: document.getElementById('supervisor').value,
-    cDate: document.getElementById('createDate').value,
-    mDate: document.getElementById('modifyDate').value,
+    cDate: creationDate,
+    mDate: modificationDate,
     creator: document.getElementById('creator').value,
     sDate: document.getElementById('tableStartDate').value,
     dDays: document.getElementById('displayDays').value,
@@ -1557,7 +1577,7 @@ function loadSavedItem(folder, proj) {
   document.getElementById('companyName').value = data.cName;
   document.getElementById('supervisor').value = data.supervisor || '';
   document.getElementById('createDate').value = data.cDate; // 作成日は当初の日付を維持
-  document.getElementById('modifyDate').value = getTodayStr(); // 編集を開始した今日の日付を自動反映
+  document.getElementById('modifyDate').value = data.mDate || ''; // 保存済みの修正日をそのまま表示
   document.getElementById('creator').value = data.creator;
   document.getElementById('tableStartDate').value = data.sDate;
   document.getElementById('tableStartDate').dataset.manual = 'true'; // 復元した日付を保持し、自動反映で上書きしない
