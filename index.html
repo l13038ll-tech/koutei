@@ -161,11 +161,12 @@
   th { background-color: #f9f9f9; padding: 2px; }
   td.bar-cell { padding: 0; vertical-align: bottom; position: relative; }
   
-  .task-text { font-size: 10px; text-align: center; white-space: nowrap; position: absolute; bottom: 15px; left: 0; z-index: 10; pointer-events: none; line-height: 1; }
-  .solid-line { border-bottom: 2px solid #444; width: 100%; position: absolute; bottom: 9px; left: 0; }
-  .dot-marker { width: 9px; height: 9px; background-color: #444; border-radius: 50%; position: absolute; bottom: 5px; left: 0; z-index: 11; }
-  .dashed-line { border-bottom: 2px dashed #444; width: 100%; position: absolute; bottom: 9px; left: 0; }
-  .arrow-head { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 8px solid #444; position: absolute; bottom: 4px; right: 0; z-index: 10; }
+  /* 文字と矢印をひとまとまりとして、工程行の縦中央に配置する */
+  .task-text { font-size: 10px; text-align: center; white-space: nowrap; position: absolute; bottom: 18px; left: 0; z-index: 10; pointer-events: none; line-height: 1; }
+  .solid-line { border-bottom: 2px solid #444; width: 100%; position: absolute; bottom: 12px; left: 0; }
+  .dot-marker { width: 9px; height: 9px; background-color: #444; border-radius: 50%; position: absolute; bottom: 8px; left: 0; z-index: 11; }
+  .dashed-line { border-bottom: 2px dashed #444; width: 100%; position: absolute; bottom: 12px; left: 0; }
+  .arrow-head { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 8px solid #444; position: absolute; bottom: 7px; right: 0; z-index: 10; }
 
   .holiday { background-color: #e0e0e0 !important; }
   .remarks { text-align: left; font-size: 11px; padding-top: 5px; }
@@ -1605,8 +1606,8 @@ function loadSavedItem(folder, proj) {
     updateTaskRange(row.querySelector('.task-start'));
   });
   updateConstructionStartWeekday();
-  generateGantt(); // すでにできている工程表をそのまま表示しておく
   showScreen('edit');
+  generateGantt(); // 編集画面を表示してから工程表を生成し、プレビューの高さを正しく計算する
 }
 </script>
 </body>
