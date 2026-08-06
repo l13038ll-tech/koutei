@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>工程表自動生成デモ</title>
+<title>工程表生成アプリ</title>
 <style>
   :root {
     --ios-blue: #007AFF;
@@ -232,6 +232,13 @@
     0% { transform: translateX(-120%); }
     100% { transform: translateX(320%); }
   }
+  .image-select-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .image-select-label {
+    display: block; padding: 11px 12px; border-radius: 10px; text-align: center;
+    background: var(--ios-gray5); color: var(--ios-blue); font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .image-select-label.camera { background: var(--ios-blue); color: #fff; }
+  .image-select-label input { display: none; }
 
   @media print {
     .preview-outer { display: none !important; }
@@ -456,8 +463,15 @@
       </p>
     </details>
 
-    <div style="margin-top:10px;">
-      <input type="file" id="scheduleImageInput" accept="image/*" capture="environment" onchange="handleScheduleImageSelected(this)">
+    <div class="image-select-buttons">
+      <label class="image-select-label camera">
+        カメラで撮影
+        <input type="file" id="scheduleCameraInput" accept="image/*" capture="environment" onchange="handleScheduleImageSelected(this)">
+      </label>
+      <label class="image-select-label">
+        カメラロールから選択
+        <input type="file" id="scheduleImageInput" accept="image/*" onchange="handleScheduleImageSelected(this)">
+      </label>
     </div>
     <p id="ocrStatus" style="font-size:12px; color:#0066cc; margin:8px 0 0; display:none;"></p>
     <div id="ocrProgress" class="ocr-progress" style="display:none;" role="status" aria-label="画像を読み取り中">
