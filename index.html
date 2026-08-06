@@ -310,6 +310,8 @@
     }
   }
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body onload="initApp()">
 
@@ -1629,8 +1631,15 @@ function loadSavedItem(folder, proj) {
   showScreen('edit');
   generateGantt(); // 編集画面を表示してから工程表を生成し、プレビューの高さを正しく計算する
 }
-function printPdf() {
-  const originalTitle = document.title;
+async function printPdf() {
+  // ① 画面下のプレビュー（工程表）が表示されているか確認
+  const sheet = document.getElementById('previewSheet');
+  if (!sheet || !sheet.innerHTML.trim()) {
+    alert("先に工程を入力して表を生成してください");
+    return;
+  }
+
+  // ② ファイル名の初期値を設定
   const projName = document.getElementById('projectName').value.trim() || '名称未設定';
   const mDate = document.getElementById('modifyDate').value;
   const cDate = document.getElementById('createDate').value;
@@ -1640,22 +1649,63 @@ function printPdf() {
   if (targetDate) {
     formattedDate = targetDate.replace(/-/g, '').substring(2);
   }
-  
   const datePart = formattedDate ? '_' + formattedDate : '';
+  const defaultName = projName + '工程表' + datePart;
   
-  // ① まずタイトルを変更する
-  document.title = projName + '工程表' + datePart;
-  
-  // ② スマホがタイトル変更を認識するまで「0.5秒（500ミリ秒）」待ってから印刷画面を開く
-  setTimeout(() => {
-    window.print();
+  // ③ ファイル名をユーザーに入力してもらう
+  const userInput = prompt("PDFの保存名（拡張子不要）を入力してください", defaultName);
+  if (userInput === null) return;
+  const fileName = userInput + '.pdf';
+
+  showToast("PDFを作成中です...（数秒かかります）");
+
+  try {
+    // 画質を保つために画面の縮小を一時的に解除
+    const wrap = document.getElementById('previewScaleWrap');
+    const originalTransform = wrap.style.transform;
+    wrap.style.transform = 'scale(1)';
     
-    // ③ 印刷画面が開いた後、余裕をもって「3秒後」に元のタイトルに戻す
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 3000);
+    // ④ 工程表を画像として読み取る（画質向上のため scale: 2 を設定）
+    const canvas = await html2canvas(sheet, { scale: 2 });
     
-  }, 500);
+    // 縮小表示を元に戻す
+    wrap.style.transform = originalTransform;
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // ⑤ 画像をA4横サイズのPDFに貼り付ける
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('landscape', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    
+    // ⑥ PDFをファイルデータに変換
+    const pdfBlob = pdf.output('blob');
+    const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+    // ⑦ スマホの共有メニューを呼び出す（LINE、メール、ファイル保存などを選べます）
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: fileName,
+      });
+    } else {
+      // ※パソコン等、共有機能が無い機種の場合は直接ダウンロードさせる
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  } catch (error) {
+    console.error(error);
+    alert("PDFの生成に失敗しました");
+  }
+}
 }
 </script>
 </body>
