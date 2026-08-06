@@ -1629,22 +1629,33 @@ function loadSavedItem(folder, proj) {
   showScreen('edit');
   generateGantt(); // 編集画面を表示してから工程表を生成し、プレビューの高さを正しく計算する
 }
-  function printPdf() {
-  // ① 元のタイトル（工程表app）を記憶しておく
+function printPdf() {
+  // ① 元のタイトルを記憶しておく
   const originalTitle = document.title;
   
-  // ② 画面に入力されている「工事名」と「作成日」を取得する
+  // ② 工事名を取得する
   const projName = document.getElementById('projectName').value.trim() || '名称未設定';
-  const cDate = document.getElementById('createDate').value || '';
   
-  // ③ タイトルを「工事名工程表_日付」に書き換える
-  const datePart = cDate ? '_' + cDate : '';
+  // ③ 日付を取得する（修正日があれば優先、なければ作成日）
+  const mDate = document.getElementById('modifyDate').value;
+  const cDate = document.getElementById('createDate').value;
+  const targetDate = mDate ? mDate : cDate;
+  
+  // ④ 日付を YYMMDD 形式（例: 2026-08-06 → 260806）に変換する
+  let formattedDate = '';
+  if (targetDate) {
+    // ハイフン(-)を消去し、先頭の2文字（西暦の頭2桁）を削る
+    formattedDate = targetDate.replace(/-/g, '').substring(2);
+  }
+  
+  // ⑤ タイトルを「工事名工程表_日付」に書き換える
+  const datePart = formattedDate ? '_' + formattedDate : '';
   document.title = projName + '工程表' + datePart;
   
-  // ④ 印刷（PDF保存）画面を呼び出す
+  // ⑥ 印刷（PDF保存）画面を呼び出す
   window.print();
   
-  // ⑤ 印刷画面が開いた後、少し時間をおいてから元のタイトルに戻す
+  // ⑦ 印刷画面が開いた後、少し時間をおいてから元のタイトルに戻す
   setTimeout(() => {
     document.title = originalTitle;
   }, 1000);
